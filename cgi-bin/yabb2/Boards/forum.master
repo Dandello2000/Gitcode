@@ -1,0 +1,24 @@
+$mloaded = 1;
+@categoryorder = qw(general bug-seekers staff memzone);
+$cat{'memzone'} = qq~future,chat~;
+$cat{'general'} = qq~general,test,bugs,files~;
+$cat{'bug-seekers'} = qq~slamdunk-1,slamdunk-2,slamdunk-3~;
+$cat{'staff'} = qq~announcements,recycle,spam~;
+$catinfo{'memzone'} = qq~Member Zone||1|~;
+$catinfo{'general'} = qq~General Category||0~;
+$catinfo{'bug-seekers'} = qq~The Bug Seeker Zone|Administrator, Global Moderator, God Member, Senior Member, Full Member, Junior Member, YaBB Newbies|1|~;
+$catinfo{'staff'} = qq~Forum Staff|Administrator, Global Moderator|1|~;
+$board{'general'} = qq~General Board||1~;
+$board{'slamdunk-2'} = qq~Splat Spot||1~;
+$board{'test'} = qq~Test Zone||~;
+$board{'files'} = qq~File Repository||~;
+$board{'recycle'} = qq~Recycle Bin||~;
+$board{'slamdunk-3'} = qq~Zapper Zone||~;
+$board{'bugs'} = qq~The Bug Zone||~;
+$board{'chat'} = qq~Talk It Up|Administrator, Global Moderator, God Member, Senior Member, Full Member, Junior Member, YaBB Newbies, 2|~;
+$board{'spam'} = qq~Spam Collection Center||~;
+$board{'announcements'} = qq~Global Announcements||~;
+$board{'future'} = qq~Wants and wishes|Administrator, Global Moderator, God Member, Senior Member, Full Member, Junior Member, YaBB Newbies, 2|1~;
+$board{'slamdunk-1'} = qq~Squishy Board||1~;
+
+1;

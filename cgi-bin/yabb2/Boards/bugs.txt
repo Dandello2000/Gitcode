@@ -1,0 +1,34 @@
+1345995835|Send Topic can be accessed when disabled|Dandello|momkat@dandello.net|1346205621|7|admin|xx|0
+1346101925|Got a weird one (template editor)|A Tester|jonb@pdfattorneys.com|1346182791|8|ATester|xx|0
+1346106390|the old double split bug still here|xnoddyx|xnoddyx@hotmail.com|1346122415|5|john1|xx|0
+1346006243|Incorrect Error Messages|Dandello|momkat@dandello.net|1346006243|0|admin|xx|0
+1345975923|New Posts indicator|xnoddyx|xnoddyx@hotmail.com|1346005612|4|john1|xx|0
+1345936869|insert marquee|xnoddyx|xnoddyx@hotmail.com|1345975422|5|john1|xx|0
+1345944077|avatar / Attachments images view size|xnoddyx|xnoddyx@hotmail.com|1345974807|2|john1|xx|0
+1345912791|More LogInOut.pl niggles|Dandello|momkat@dandello.net|1345956150|5|admin|xx|0
+1345914538|password reminder|xnoddyx|xnoddyx@hotmail.com|1345938261|4|john1|xx|0
+1345910551|Time bug in Backup.pl|Dandello|momkat@dandello.net|1345910551|0|admin|xx|0
+1345211717|Update sessions issue -|A Tester|jonb@pdfattorneys.com|1345582845|14|ATester|xx|0s
+1344885921|broken topic|A Tester|jonb@pdfattorneys.com|1345303783|2|ATester|xx|0
+1344885276|Media tag|A Tester|jonb@pdfattorneys.com|1345303720|3|ATester|xx|0
+1345162693|Cosmetic_CSS Booga-Blu|A Tester|jonb@pdfattorneys.com|1345300604|6|ATester|xx|0
+1345157191|disabled parsing in message issues|Dandello|momkat@dandello.net|1345157191|0|admin|xx|0
+1345055142|'Possible' Bug -|A Tester|jonb@pdfattorneys.com|1345154189|8|ATester|xx|0
+1345137085|Reported on YaBB - Broadcast Message Bug|Dandello|momkat@dandello.net|1345137085|0|admin|xx|0
+1345128875|Reported on YABB - Register bug|Dandello|momkat@dandello.net|1345134866|1|admin|xx|0
+1345129993|Live preview down|Dandello|momkat@dandello.net|1345131249|1|admin|xx|0
+1345126811|Character count|Lady Lo|librarian@shadolibrary.org|1345126811|0|Lady_Lo|xx|0
+1345074493|MailMembers.pl bug|Dandello|momkat@dandello.net|1345074493|0|admin|xx|0
+1345069000|Admin Update Sessions|Dandello|momkat@dandello.net|1345069000|0|admin|xx|0
+1345068428|More deprecated code|Dandello|momkat@dandello.net|1345068428|0|admin|xx|0
+1345068283|Perl 5.12/5.14 incompatability|Dandello|momkat@dandello.net|1345068283|0|admin|xx|0
+1345053737|The &quot;/me&quot; tag|Dandello|momkat@dandello.net|1345053737|0|admin|xx|0
+1345053574|Adding Extended Profiles Locks Members|Dandello|momkat@dandello.net|1345053574|0|admin|xx|0
+1345053352|Extended Profiles - non active fields issue|Dandello|momkat@dandello.net|1345053352|0|admin|xx|0
+1345053119|Extended Profiles date issues|Dandello|momkat@dandello.net|1345053119|0|admin|xx|0
+1345053006|Media center and Youtube|Dandello|momkat@dandello.net|1345053006|0|admin|xx|0
+1345051456|N/A displays in Last Post column|Dandello|momkat@dandello.net|1345051456|0|admin|xx|0
+1345051255|Grey_box image bug|Dandello|momkat@dandello.net|1345051255|0|admin|xx|0
+1345049893|Optional Gender on Registration|Dandello|momkat@dandello.net|1345049893|0|admin|xx|0
+1345049514|Context Help in Instant Messages|Dandello|momkat@dandello.net|1345049514|0|admin|xx|0
+1344957144|New Buggy|A Tester|jonb@pdfattorneys.com|1345043884|6|ATester|xx|0
