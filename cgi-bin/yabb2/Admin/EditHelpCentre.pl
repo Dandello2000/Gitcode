@@ -1,5 +1,6 @@
 ###############################################################################
 # EditHelpCentre.pl                                                           #
+# $Date: 9/20/2012 $                                                          #
 ###############################################################################
 # YaBB: Yet another Bulletin Board                                            #
 # Open-Source Community Software for Webmasters                               #
@@ -11,27 +12,34 @@
 # Software by:  The YaBB Development Team                                     #
 #               with assistance from the YaBB community.                      #
 ###############################################################################
+# use strict;
+# use warnings;
+no warnings qw(uninitialized once redefine);
+use CGI::Carp qw(fatalsToBrowser);
+use English '-no_match_vars';
+our $VERSION = 1.0;
 
 $edithelpcentreplver = 'YaBB 2.6 $Revision: 1.0 $';
-if ($action eq 'detailedversion') { return 1; }
+if ( $action eq 'detailedversion' ) { return 1; }
 
 &LoadLanguage('HelpCentre');
 
 $yytitle = $helptxt{'1'};
 
 sub HelpEdit {
-      $page      = $FORM{'page'};
-      $help_area = $INFO{'area'};
+    $page      = $FORM{'page'};
+    $help_area = $INFO{'area'};
 
-      if ($page eq "user00_agreement") {
-            $yySetLocation = qq~$adminurl?action=modagreement;agreementlanguage=$language;destination=helpadmin~;
-            &redirectexit;
-      }
+    if ( $page eq "user00_agreement" ) {
+        $yySetLocation =
+qq~$adminurl?action=modagreement;agreementlanguage=$language;destination=helpadmin~;
+        &redirectexit;
+    }
 
-      require "$helpfile/$language/$help_area/$page.help";
+    require "$helpfile/$language/$help_area/$page.help";
 
-      $SectionName =~ s/_/ /g;
-      $admin_list = qq~
+    $SectionName =~ s/_/ /g;
+    $admin_list = qq~
      <tr>
        <td align="left" class="titlebg" valign="middle" width="100%">
             <input type="text" maxlength="50" width="50" value="$SectionName" name="SectionName" />
@@ -39,13 +47,13 @@ sub HelpEdit {
      </tr>
 ~;
 
-      $a = 1;
-      while (${ SectionSub . $a }) {
-            ${ SectionSub . $a } =~ s/_/ /g;
-            my $hmessage;
-            $hmessage = ${ SectionBody . $a };
+    $a = 1;
+    while ( ${ SectionSub . $a } ) {
+        ${ SectionSub . $a } =~ s/_/ /g;
+        my $hmessage;
+        $hmessage = ${ SectionBody . $a };
 
-            $admin_list .= qq~
+        $admin_list .= qq~
      <tr>
        <td align="left" class="catbg" valign="middle" width="100%">
             <input type="text" maxlength="50" width="50" value="${SectionSub.$a}" name="SectionSub$a" />
@@ -57,10 +65,10 @@ sub HelpEdit {
          </td>
      </tr>
 ~;
-            $a++;
-      }
+        $a++;
+    }
 
-      $yymain .= qq~
+    $yymain .= qq~
 <form name="help_update" action="$adminurl?action=helpediting2" method="post">
 <input type="hidden" name="area" value="$help_area" />
 <input type="hidden" name="page" value="$page" />
@@ -86,180 +94,187 @@ $admin_list
 </form>
 ~;
 
-      $yytitle     = "$helptxt{'7'}";
-      $action_area = "helpadmin";
-      &AdminTemplate;
+    $yytitle     = "$helptxt{'7'}";
+    $action_area = "helpadmin";
+    &AdminTemplate;
 }
 
 sub HelpEdit2 {
-      $Area = $FORM{'area'};
-      $Page = $FORM{'page'};
+    $Area = $FORM{'area'};
+    $Page = $FORM{'page'};
 
-      fopen(HELPORDER, ">$helpfile/$language/$Area/$Page.help");
+    fopen( HELPORDER, ">$helpfile/$language/$Area/$Page.help" );
 
-      $FORM{"SectionName"} =~ s/ /_/g;
-      print HELPORDER qq~\$SectionName = "$FORM{"SectionName"}";\n\n~;
-      $a = 1;
-      while ($FORM{"SectionBody$a"}) {
+    $FORM{"SectionName"} =~ s/ /_/g;
+    print HELPORDER qq~\$SectionName = "$FORM{"SectionName"}";\n\n~;
+    $a = 1;
+    while ( $FORM{"SectionBody$a"} ) {
 
-            $FORM{"SectionBody$a"} =~ tr/\r//d;
-            $FORM{"SectionBody$a"} =~ s/\cM//g;
-            $FORM{"SectionBody$a"} =~ s~\[([^\]]{0,30})\n([^\]]{0,30})\]~\[$1$2\]~g;
-            $FORM{"SectionBody$a"} =~ s~\[/([^\]]{0,30})\n([^\]]{0,30})\]~\[/$1$2\]~g;
-            $FORM{"SectionBody$a"} =~ s~(\w+://[^<>\s\n\"\]\[]+)\n([^<>\s\n\"\]\[]+)~$1\n$2~g;
-            $FORM{"SectionBody$a"} =~ s~\t~ \&nbsp; \&nbsp; \&nbsp;~g;
-            $FORM{"SectionBody$a"} =~ s~@~\\@~g;
+        $FORM{"SectionBody$a"} =~ tr/\r//d;
+        $FORM{"SectionBody$a"} =~ s/\cM//g;
+        $FORM{"SectionBody$a"} =~ s~\[([^\]]{0,30})\n([^\]]{0,30})\]~\[$1$2\]~g;
+        $FORM{"SectionBody$a"} =~
+          s~\[/([^\]]{0,30})\n([^\]]{0,30})\]~\[/$1$2\]~g;
+        $FORM{"SectionBody$a"} =~
+          s~(\w+://[^<>\s\n\"\]\[]+)\n([^<>\s\n\"\]\[]+)~$1\n$2~g;
+        $FORM{"SectionBody$a"} =~ s~\t~ \&nbsp; \&nbsp; \&nbsp;~g;
+        $FORM{"SectionBody$a"} =~ s~@~\\@~g;
 
-            $FORM{"SectionSub$a"} =~ s/ /_/g;
+        $FORM{"SectionSub$a"} =~ s/ /_/g;
 
-            print HELPORDER qq~### Section $a\n~;
-            print HELPORDER qq~#############################################\n~;
-            print HELPORDER qq~\$SectionSub$a = "$FORM{"SectionSub$a"}";\n~;
-            print HELPORDER qq~\$SectionBody$a = qq\~$FORM{"SectionBody$a"}\~;\n~;
-            print HELPORDER qq~#############################################\n\n\n~;
+        print HELPORDER qq~### Section $a\n~;
+        print HELPORDER qq~#############################################\n~;
+        print HELPORDER qq~\$SectionSub$a = "$FORM{"SectionSub$a"}";\n~;
+        print HELPORDER qq~\$SectionBody$a = qq\~$FORM{"SectionBody$a"}\~;\n~;
+        print HELPORDER qq~#############################################\n\n\n~;
 
-            $a++;
-      }
-      print HELPORDER qq~1;~;
+        $a++;
+    }
+    print HELPORDER qq~1;~;
 
-      fclose(HELPORDER);
+    fclose(HELPORDER);
 
-      $yymain .= "$helptxt{'8'}";
-      $yytitle       = "$helptxt{'7'}";
-      $yySetLocation = qq~$adminurl?action=helpadmin~;
-      &redirectexit;
+    $yymain .= "$helptxt{'8'}";
+    $yytitle       = "$helptxt{'7'}";
+    $yySetLocation = qq~$adminurl?action=helpadmin~;
+    &redirectexit;
 }
 
 sub HelpSet2 {
-      $UseHelp_Perms = $FORM{"UseHelp_Perms"} ? 1 : 0;
+    $UseHelp_Perms = $FORM{"UseHelp_Perms"} ? 1 : 0;
 
-      require "$admindir/NewSettings.pl";
-      &SaveSettingsTo('Settings.pl');
+    require "$admindir/NewSettings.pl";
+    &SaveSettingsTo('Settings.pl');
 
-      $yymain .= "$helptxt{'8'}";
-      $yytitle = "$helptxt{'7'}";
-      $yySetLocation = qq~$adminurl?action=helpadmin~;
-      &redirectexit;
+    $yymain .= "$helptxt{'8'}";
+    $yytitle       = "$helptxt{'7'}";
+    $yySetLocation = qq~$adminurl?action=helpadmin~;
+    &redirectexit;
 
 }
 
 sub MainAdmin {
-      my ($admin_list, $adminlist, $gmod_list, $gmodlist, $moderator_list, $moderatorlist, $user_list, $userlist);
+    my ( $admin_list, $adminlist, $gmod_list, $gmodlist, $moderator_list,
+        $moderatorlist, $user_list, $userlist );
 
-      $admincount = 0;
-      opendir(HELPDIR, "$helpfile/$language/Admin");
-      @contents = readdir(HELPDIR);
-      closedir(HELPDIR);
-      foreach $line (sort { uc($a) cmp uc($b) } @contents) {
-            ($name, $extension) = split(/\./, $line);
-            if ($extension !~ /help/i) { next; }
-            $select = "";
-            if ($admincount == 0) { $select = qq~ selected="selected"~; }
-            $admin_list .= qq~<option value="$name"$select>$name</option>~;
-            $admin_lst  .= qq~$name\n~;
-            $admincount++;
-      }
-      if (!-e ("$vardir/Admin.helporder")) {
-            fopen(HELPORDER, ">$vardir/Admin.helporder") || die("couldn't write order file - check permissions on $vardir");
-            print HELPORDER qq~$admin_lst~;
-            fclose(HELPORDER);
-      }
-      fopen(HELPORDER, "$vardir/Admin.helporder");
-      @adminorderlist = <HELPORDER>;
-      fclose(HELPORDER);
-      foreach $line (@adminorderlist) {
-            chomp $line;
-            $adminlist .= "$line\n";
-      }
+    $admincount = 0;
+    opendir( HELPDIR, "$helpfile/$language/Admin" );
+    @contents = readdir(HELPDIR);
+    closedir(HELPDIR);
+    foreach $line ( sort { uc($a) cmp uc($b) } @contents ) {
+        ( $name, $extension ) = split( /\./, $line );
+        if ( $extension !~ /help/i ) { next; }
+        $select = "";
+        if ( $admincount == 0 ) { $select = qq~ selected="selected"~; }
+        $admin_list .= qq~<option value="$name"$select>$name</option>~;
+        $admin_lst  .= qq~$name\n~;
+        $admincount++;
+    }
+    if ( !-e ("$vardir/Admin.helporder") ) {
+        fopen( HELPORDER, ">$vardir/Admin.helporder" )
+          || die("couldn't write order file - check permissions on $vardir");
+        print HELPORDER qq~$admin_lst~;
+        fclose(HELPORDER);
+    }
+    fopen( HELPORDER, "$vardir/Admin.helporder" );
+    @adminorderlist = <HELPORDER>;
+    fclose(HELPORDER);
+    foreach $line (@adminorderlist) {
+        chomp $line;
+        $adminlist .= "$line\n";
+    }
 
-      $gmodcount = 0;
-      opendir(HELPDIR, "$helpfile/$language/Gmod");
-      @contents = readdir(HELPDIR);
-      closedir(HELPDIR);
-      foreach $line (sort { uc($a) cmp uc($b) } @contents) {
-            ($name, $extension) = split(/\./, $line);
-            if ($extension !~ /help/i) { next; }
-            $select = "";
-            if ($gmodcount == 0) { $select = qq~ selected="selected"~; }
-            $gmod_list .= qq~<option value="$name"$select>$name</option>~;
-            $gmod_lst  .= qq~$name\n~;
-            $gmodcount++;
-      }
-      if (!-e ("$vardir/Gmod.helporder")) {
-            fopen(HELPORDER, ">$vardir/Gmod.helporder") || die("couldn't write order file - check permissions on $vardir");
-            print HELPORDER qq~$gmod_lst~;
-            fclose(HELPORDER);
-      }
-      fopen(HELPORDER, "$vardir/Gmod.helporder");
-      @gmodorderlist = <HELPORDER>;
-      fclose(HELPORDER);
-      foreach $line (@gmodorderlist) {
-            chomp $line;
-            $gmodlist .= "$line\n";
-      }
+    $gmodcount = 0;
+    opendir( HELPDIR, "$helpfile/$language/Gmod" );
+    @contents = readdir(HELPDIR);
+    closedir(HELPDIR);
+    foreach $line ( sort { uc($a) cmp uc($b) } @contents ) {
+        ( $name, $extension ) = split( /\./, $line );
+        if ( $extension !~ /help/i ) { next; }
+        $select = "";
+        if ( $gmodcount == 0 ) { $select = qq~ selected="selected"~; }
+        $gmod_list .= qq~<option value="$name"$select>$name</option>~;
+        $gmod_lst  .= qq~$name\n~;
+        $gmodcount++;
+    }
+    if ( !-e ("$vardir/Gmod.helporder") ) {
+        fopen( HELPORDER, ">$vardir/Gmod.helporder" )
+          || die("couldn't write order file - check permissions on $vardir");
+        print HELPORDER qq~$gmod_lst~;
+        fclose(HELPORDER);
+    }
+    fopen( HELPORDER, "$vardir/Gmod.helporder" );
+    @gmodorderlist = <HELPORDER>;
+    fclose(HELPORDER);
+    foreach $line (@gmodorderlist) {
+        chomp $line;
+        $gmodlist .= "$line\n";
+    }
 
-      $modcount = 0;
-      opendir(HELPDIR, "$helpfile/$language/Moderator");
-      @contents = readdir(HELPDIR);
-      closedir(HELPDIR);
-      foreach $line (sort { uc($a) cmp uc($b) } @contents) {
-            ($name, $extension) = split(/\./, $line);
-            if ($extension !~ /help/i) { next; }
-            $select = "";
-            if ($modcount == 0) { $select = qq~ selected="selected"~; }
-            $moderator_list .= qq~<option value="$name"$select>$name</option>~;
-            $moderator_lst  .= qq~$name\n~;
-            $modcount++;
-      }
-      if (!-e ("$vardir/Moderator.helporder")) {
-            fopen(HELPORDER, ">$vardir/Moderator.helporder") || die("couldn't write order file - check permissions on $vardir");
-            print HELPORDER qq~$moderator_lst~;
-            fclose(HELPORDER);
-      }
-      fopen(HELPORDER, "$vardir/Moderator.helporder");
-      @modorderlist = <HELPORDER>;
-      fclose(HELPORDER);
-      foreach $line (@modorderlist) {
-            chomp $line;
-            $moderatorlist .= "$line\n";
-      }
+    $modcount = 0;
+    opendir( HELPDIR, "$helpfile/$language/Moderator" );
+    @contents = readdir(HELPDIR);
+    closedir(HELPDIR);
+    foreach $line ( sort { uc($a) cmp uc($b) } @contents ) {
+        ( $name, $extension ) = split( /\./, $line );
+        if ( $extension !~ /help/i ) { next; }
+        $select = "";
+        if ( $modcount == 0 ) { $select = qq~ selected="selected"~; }
+        $moderator_list .= qq~<option value="$name"$select>$name</option>~;
+        $moderator_lst  .= qq~$name\n~;
+        $modcount++;
+    }
+    if ( !-e ("$vardir/Moderator.helporder") ) {
+        fopen( HELPORDER, ">$vardir/Moderator.helporder" )
+          || die("couldn't write order file - check permissions on $vardir");
+        print HELPORDER qq~$moderator_lst~;
+        fclose(HELPORDER);
+    }
+    fopen( HELPORDER, "$vardir/Moderator.helporder" );
+    @modorderlist = <HELPORDER>;
+    fclose(HELPORDER);
+    foreach $line (@modorderlist) {
+        chomp $line;
+        $moderatorlist .= "$line\n";
+    }
 
-      $usercount = 0;
-      opendir(HELPDIR, "$helpfile/$language/User");
-      @contents = readdir(HELPDIR);
-      closedir(HELPDIR);
-      foreach $line (sort { uc($a) cmp uc($b) } @contents) {
-            ($name, $extension) = split(/\./, $line);
-            if ($extension !~ /help/i) { next; }
-            $select = "";
-            if ($usercount == 0) { $select = qq~ selected="selected"~; }
-            $user_list .= qq~<option value="$name"$select>$name</option>~;
-            $user_lst  .= qq~$name\n~;
-            $usercount++;
-      }
-      if (!-e ("$vardir/User.helporder")) {
-            fopen(HELPORDER, ">$vardir/User.helporder") || die("couldn't write order file - check permissions on $vardir");
-            print HELPORDER qq~$user_lst~;
-            fclose(HELPORDER);
-      }
-      fopen(HELPORDER, "$vardir/User.helporder");
-      @userorderlist = <HELPORDER>;
-      fclose(HELPORDER);
-      foreach $line (@userorderlist) {
-            chomp $line;
-            $userlist .= qq~$line\n~;
-      }
+    $usercount = 0;
+    opendir( HELPDIR, "$helpfile/$language/User" );
+    @contents = readdir(HELPDIR);
+    closedir(HELPDIR);
+    foreach $line ( sort { uc($a) cmp uc($b) } @contents ) {
+        ( $name, $extension ) = split( /\./, $line );
+        if ( $extension !~ /help/i ) { next; }
+        $select = "";
+        if ( $usercount == 0 ) { $select = qq~ selected="selected"~; }
+        $user_list .= qq~<option value="$name"$select>$name</option>~;
+        $user_lst  .= qq~$name\n~;
+        $usercount++;
+    }
+    if ( !-e ("$vardir/User.helporder") ) {
+        fopen( HELPORDER, ">$vardir/User.helporder" )
+          || die("couldn't write order file - check permissions on $vardir");
+        print HELPORDER qq~$user_lst~;
+        fclose(HELPORDER);
+    }
+    fopen( HELPORDER, "$vardir/User.helporder" );
+    @userorderlist = <HELPORDER>;
+    fclose(HELPORDER);
+    foreach $line (@userorderlist) {
+        chomp $line;
+        $userlist .= qq~$line\n~;
+    }
 
-      if ($admincount < 4) { $admincount = 4; }
-      if ($gmodcount < 4)  { $gmodcount  = 4; }
-      if ($modcount < 4)   { $modcount   = 4; }
-      if ($usercount < 4)  { $usercount  = 4; }
+    if ( $admincount < 4 ) { $admincount = 4; }
+    if ( $gmodcount < 4 )  { $gmodcount  = 4; }
+    if ( $modcount < 4 )   { $modcount   = 4; }
+    if ( $usercount < 4 )  { $usercount  = 4; }
 
-      my $perms_check = '';
-      if ($UseHelp_Perms == 1) {
-            $perms_check = qq~ checked='checked'~;
-      }
-      $yymain .= qq~
+    my $perms_check = '';
+    if ( $UseHelp_Perms == 1 ) {
+        $perms_check = qq~ checked='checked'~;
+    }
+    $yymain .= qq~
 <form action="$adminurl?action=helpsettings2" method="post" style="display: inline">
    <table class="bordercolor" align="center" width="440" cellspacing="1" cellpadding="4">
      <tr valign="middle">
@@ -449,37 +464,38 @@ function adduserhelp() {
    </table>
 ~;
 
-      $yytitle     = "$helptxt{'7'}";
-      $action_area = "helpadmin";
-      &AdminTemplate;
+    $yytitle     = "$helptxt{'7'}";
+    $action_area = "helpadmin";
+    &AdminTemplate;
 }
 
 sub SetOrderFile {
-      my $help_area   = $INFO{'area'};
-      my %verify_hash = ();
-      $FORM{'order'}   =~ s/\r//g;
-      $FORM{'testlst'} =~ s/\r//g;
-      $oldorder = $FORM{'testlst'};
-      $neworder = $FORM{'order'};
-      @oldorder = split(/\n/, $oldorder);
-      @neworder = split(/\n/, $neworder);
-      foreach (@oldorder) {
-            $_ =~ s/[\n\r]//g;
-            $verify_hash{"$_"}++;
-      }
-      $theorder = "";
-      foreach $order (@neworder) {
-            $order =~ s/[\n\r]//g;
-            if ($order eq "") { next; }
-            if (!(exists($verify_hash{$order}))) { next; }
-            $theorder .= "$order\n";
-      }
-      fopen(HELPORDER, ">$vardir/$help_area.helporder") || die("couldn't write order file - check permissions on $vardir");
-      print HELPORDER qq~$theorder~;
-      fclose(HELPORDER);
-      $yytitle       = "$helptxt{'7'}";
-      $yySetLocation = qq~$adminurl?action=helpadmin~;
-      &redirectexit;
+    my $help_area   = $INFO{'area'};
+    my %verify_hash = ();
+    $FORM{'order'}   =~ s/\r//g;
+    $FORM{'testlst'} =~ s/\r//g;
+    $oldorder = $FORM{'testlst'};
+    $neworder = $FORM{'order'};
+    @oldorder = split( /\n/, $oldorder );
+    @neworder = split( /\n/, $neworder );
+    foreach (@oldorder) {
+        $_ =~ s/[\n\r]//g;
+        $verify_hash{"$_"}++;
+    }
+    $theorder = "";
+    foreach $order (@neworder) {
+        $order =~ s/[\n\r]//g;
+        if ( $order eq "" ) { next; }
+        if ( !( exists( $verify_hash{$order} ) ) ) { next; }
+        $theorder .= "$order\n";
+    }
+    fopen( HELPORDER, ">$vardir/$help_area.helporder" )
+      || die("couldn't write order file - check permissions on $vardir");
+    print HELPORDER qq~$theorder~;
+    fclose(HELPORDER);
+    $yytitle       = "$helptxt{'7'}";
+    $yySetLocation = qq~$adminurl?action=helpadmin~;
+    &redirectexit;
 }
 
 1;

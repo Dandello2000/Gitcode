@@ -1,5 +1,6 @@
 ###############################################################################
 # AntispamQuestions.pl                                                        #
+# $Date: 9/20/2012 $                                                          #
 ###############################################################################
 # YaBB: Yet another Bulletin Board                                            #
 # Open-Source Community Software for Webmasters                               #
@@ -11,25 +12,35 @@
 # Software by:  The YaBB Development Team                                     #
 #               with assistance from the YaBB community.                      #
 ###############################################################################
+# use strict;
+# use warnings;
+no warnings qw(uninitialized once redefine);
+use CGI::Carp qw(fatalsToBrowser);
+use English '-no_match_vars';
+our $VERSION = 1.0;
 
 $antispamquestionsplver = 'YaBB 2.6 $Revision: 1.0 $';
-if ($action eq 'detailedversion') { return 1; }
+if ( $action eq 'detailedversion' ) { return 1; }
 
 sub SpamQuestions {
 
     &is_admin_or_gmod;
 
-    if ($en_spam_questions)   { $chk_spam_question = qq~ checked="checked"~; }
-    if ($spam_questions_case) { $chk_spam_question_case = qq~ checked="checked"~; }
+    if ($en_spam_questions) { $chk_spam_question = qq~ checked="checked"~; }
+    if ($spam_questions_case) {
+        $chk_spam_question_case = qq~ checked="checked"~;
+    }
 
-    fopen(SPAMQUESTIONS, "<$langdir/$language/spam.questions") || &admin_fatal_error("cannot_open","$langdir/$language/spam.questions", 1);
+    fopen( SPAMQUESTIONS, "<$langdir/$language/spam.questions" )
+      || &admin_fatal_error( "cannot_open", "$langdir/$language/spam.questions",
+        1 );
     @spam_questions = <SPAMQUESTIONS>;
     fclose(SPAMQUESTIONS);
 
     $total_questions = @spam_questions || 0;
 
     if ($total_questions) {
-        $header_row = qq~ colspan="4"~;
+        $header_row     = qq~ colspan="4"~;
         $show_questions = qq~
 <tr class="catbg" style="font-weight: bold; font-size: 11px;">
     <td style="width: 43%;">$spam_question_txt{'question'}</td>
@@ -38,10 +49,11 @@ sub SpamQuestions {
     <td style="width: 7%;">$spam_question_txt{'delete'}</td>
 </tr>~;
 
-        foreach my $question (sort { $a <=> $b } @spam_questions) {
+        foreach my $question ( sort { $a <=> $b } @spam_questions ) {
             chomp $question;
-            ($spam_question_id, $spam_question, $spam_answer) = split(/\|/, $question);
-             $show_questions .= qq~
+            ( $spam_question_id, $spam_question, $spam_answer ) =
+              split( /\|/, $question );
+            $show_questions .= qq~
 <tr class="windowbg2">
     <td>$spam_question</td>
     <td>$spam_answer</td>
@@ -59,8 +71,9 @@ sub SpamQuestions {
     </td>
 </tr>~;
         }
-    } else {
-        $header_row = "";
+    }
+    else {
+        $header_row     = "";
         $show_questions = qq~
 <tr class="windowbg2">
     <td>$spam_question_txt{'no_questions'}</td>
@@ -140,7 +153,7 @@ $show_questions
 </form>
 ~;
 
-    $yytitle = $admintxt{'a3_sub6'};
+    $yytitle     = $admintxt{'a3_sub6'};
     $action_area = "spam_questions";
     &AdminTemplate;
     exit;
@@ -151,13 +164,13 @@ sub SpamQuestions2 {
 
     &is_admin_or_gmod;
 
-    $en_spam_questions = $FORM{'en_spam_questions'} || "0";
+    $en_spam_questions   = $FORM{'en_spam_questions'}   || "0";
     $spam_questions_case = $FORM{'spam_questions_case'} || "0";
 
     require "$admindir/NewSettings.pl";
     &SaveSettingsTo('Settings.pl');
 
-    if ($action eq "spam_questions2") {
+    if ( $action eq "spam_questions2" ) {
         $yySetLocation = qq~$adminurl?action=spam_questions~;
         &redirectexit;
     }
@@ -171,15 +184,21 @@ sub SpamQuestionsAdd {
     $spam_question = $FORM{'spam_question'};
     $spam_answer   = $FORM{'spam_answer'};
 
-    if ($spam_question eq '') { &admin_fatal_error("invalid_value","$spam_question_txt{'question'}"); }
-    if ($spam_answer eq '') { &admin_fatal_error("invalid_value","$spam_question_txt{'answer'}"); }
+    if ( $spam_question eq '' ) {
+        &admin_fatal_error( "invalid_value", "$spam_question_txt{'question'}" );
+    }
+    if ( $spam_answer eq '' ) {
+        &admin_fatal_error( "invalid_value", "$spam_question_txt{'answer'}" );
+    }
 
-    fopen(SPAMQUESTIONS, ">>$langdir/$language/spam.questions") || &admin_fatal_error("cannot_open","$langdir/$language/spam.questions", 1);
+    fopen( SPAMQUESTIONS, ">>$langdir/$language/spam.questions" )
+      || &admin_fatal_error( "cannot_open", "$langdir/$language/spam.questions",
+        1 );
     print SPAMQUESTIONS "$date|$spam_question|$spam_answer\n";
     fclose(SPAMQUESTIONS);
 
-      if ($action eq "spam_questions_add") {
-          $yySetLocation = qq~$adminurl?action=spam_questions~;
+    if ( $action eq "spam_questions_add" ) {
+        $yySetLocation = qq~$adminurl?action=spam_questions~;
         &redirectexit;
     }
 
@@ -192,17 +211,21 @@ sub SpamQuestionsEdit {
     $id = $FORM{'spam_question_id'};
     my $question_edit = "";
 
-    fopen(SPAMQUESTIONS, "<$langdir/$language/spam.questions") || &admin_fatal_error("cannot_open","$langdir/$language/spam.questions", 1);
+    fopen( SPAMQUESTIONS, "<$langdir/$language/spam.questions" )
+      || &admin_fatal_error( "cannot_open", "$langdir/$language/spam.questions",
+        1 );
     @spam_questions = <SPAMQUESTIONS>;
     fclose(SPAMQUESTIONS);
 
-      foreach my $question (@spam_questions) {
+    foreach my $question (@spam_questions) {
         chomp $question;
-        if ($question =~ /$id/) {
-            $question_edit = $question; last;
+        if ( $question =~ /$id/ ) {
+            $question_edit = $question;
+            last;
         }
     }
-    ($spam_question_id, $spam_question, $spam_answer) = split(/\|/, $question_edit);
+    ( $spam_question_id, $spam_question, $spam_answer ) =
+      split( /\|/, $question_edit );
 
     $yymain = qq~
 <form action="$adminurl?action=spam_questions_edit2" method="post">
@@ -248,25 +271,33 @@ sub SpamQuestionsEdit2 {
     &is_admin_or_gmod;
 
     $spam_question_id = $FORM{'spam_question_id'};
-    $spam_question = $FORM{'spam_question'};
-    $spam_answer = $FORM{'spam_answer'};
+    $spam_question    = $FORM{'spam_question'};
+    $spam_answer      = $FORM{'spam_answer'};
 
-    if ($spam_question eq '') { &admin_fatal_error("invalid_value","$spam_question_txt{'question'}"); }
-    if ($spam_answer eq '') { &admin_fatal_error("invalid_value","$spam_question_txt{'answer'}"); }
+    if ( $spam_question eq '' ) {
+        &admin_fatal_error( "invalid_value", "$spam_question_txt{'question'}" );
+    }
+    if ( $spam_answer eq '' ) {
+        &admin_fatal_error( "invalid_value", "$spam_question_txt{'answer'}" );
+    }
 
-    fopen(SPAMQUESTIONS, "<$langdir/$language/spam.questions") || &admin_fatal_error("cannot_open","$langdir/$language/spam.questions", 1);
+    fopen( SPAMQUESTIONS, "<$langdir/$language/spam.questions" )
+      || &admin_fatal_error( "cannot_open", "$langdir/$language/spam.questions",
+        1 );
     @spam_questions = <SPAMQUESTIONS>;
     fclose(SPAMQUESTIONS);
 
-    @question = grep (!/$spam_question_id/, @spam_questions);
-    push(@question, "$spam_question_id|$spam_question|$spam_answer");
-    $question = join("", @question);
+    @question = grep ( !/$spam_question_id/, @spam_questions );
+    push( @question, "$spam_question_id|$spam_question|$spam_answer" );
+    $question = join( "", @question );
 
-    fopen(SPAMQUESTIONS, ">$langdir/$language/spam.questions") || &admin_fatal_error("cannot_open","$langdir/$language/spam.questions", 1);
+    fopen( SPAMQUESTIONS, ">$langdir/$language/spam.questions" )
+      || &admin_fatal_error( "cannot_open", "$langdir/$language/spam.questions",
+        1 );
     print SPAMQUESTIONS "$question\n";
     fclose(SPAMQUESTIONS);
 
-    if ($action eq "spam_questions_edit2") {
+    if ( $action eq "spam_questions_edit2" ) {
         $yySetLocation = qq~$adminurl?action=spam_questions~;
         &redirectexit;
     }
@@ -277,15 +308,19 @@ sub SpamQuestionsDelete {
 
     &is_admin_or_gmod;
 
-    fopen(SPAMQUESTIONS, "<$langdir/$language/spam.questions") || &admin_fatal_error("cannot_open","$langdir/$language/spam.questions", 1);
+    fopen( SPAMQUESTIONS, "<$langdir/$language/spam.questions" )
+      || &admin_fatal_error( "cannot_open", "$langdir/$language/spam.questions",
+        1 );
     @spam_questions = <SPAMQUESTIONS>;
     fclose(SPAMQUESTIONS);
 
-    fopen(SPAMQUESTIONS, ">$langdir/$language/spam.questions") || &admin_fatal_error("cannot_open","$langdir/$language/spam.questions", 1);
-    print SPAMQUESTIONS grep (!/$FORM{'spam_question_id'}/, @spam_questions);
+    fopen( SPAMQUESTIONS, ">$langdir/$language/spam.questions" )
+      || &admin_fatal_error( "cannot_open", "$langdir/$language/spam.questions",
+        1 );
+    print SPAMQUESTIONS grep ( !/$FORM{'spam_question_id'}/, @spam_questions );
     fclose(SPAMQUESTIONS);
 
-    if ($action eq "spam_questions_delete") {
+    if ( $action eq "spam_questions_delete" ) {
         $yySetLocation = qq~$adminurl?action=spam_questions~;
         &redirectexit;
     }

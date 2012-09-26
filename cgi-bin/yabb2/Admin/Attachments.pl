@@ -1,5 +1,6 @@
 ###############################################################################
 # Attachments.pl                                                              #
+# $Date: 9/20/2012 $                                                          #
 ###############################################################################
 # YaBB: Yet another Bulletin Board                                            #
 # Open-Source Community Software for Webmasters                               #
@@ -11,39 +12,46 @@
 # Software by:  The YaBB Development Team                                     #
 #               with assistance from the YaBB community.                      #
 ###############################################################################
+# use strict;
+# use warnings;
+no warnings qw(uninitialized once redefine);
+use CGI::Carp qw(fatalsToBrowser);
+use English '-no_match_vars';
+our $VERSION = 1.0;
 
 $attachmentsplver = 'YaBB 2.6 $Revision: 1.0 $';
-if ($action eq 'detailedversion') { return 1; }
+if ( $action eq 'detailedversion' ) { return 1; }
 
 sub Attachments {
-      &is_admin_or_gmod;
+    &is_admin_or_gmod;
 
-      fopen(AMS, "$vardir/attachments.txt");
-      my @attachments = <AMS>;
-      fclose(AMS);
+    fopen( AMS, "$vardir/attachments.txt" );
+    my @attachments = <AMS>;
+    fclose(AMS);
 
-      my $attachment_space = 0;
-      foreach (@attachments) {
-            $attachment_space += (split /\|/, $_, 7)[5];
-      }
+    my $attachment_space = 0;
+    foreach (@attachments) {
+        $attachment_space += ( split /\|/, $_, 7 )[5];
+    }
 
-      my $remaining_space;
-      if (!$dirlimit) {
-            $remaining_space = "$fatxt{'23'}";
-      } else {
-            $remaining_space = ($dirlimit - $attachment_space) . " KB";
-      }
+    my $remaining_space;
+    if ( !$dirlimit ) {
+        $remaining_space = "$fatxt{'23'}";
+    }
+    else {
+        $remaining_space = ( $dirlimit - $attachment_space ) . " KB";
+    }
 
-      fopen(FILE, "$vardir/oldestattach.txt");
-      $maxdaysattach = <FILE>;
-      fclose(FILE);
+    fopen( FILE, "$vardir/oldestattach.txt" );
+    $maxdaysattach = <FILE>;
+    fclose(FILE);
 
-      fopen(FILE, "$vardir/maxattachsize.txt");
-      $maxsizeattach = <FILE>;
-      fclose(FILE);
+    fopen( FILE, "$vardir/maxattachsize.txt" );
+    $maxsizeattach = <FILE>;
+    fclose(FILE);
 
-      my $totalattachnum = @attachments;
-      $yymain .= qq~
+    my $totalattachnum = @attachments;
+    $yymain .= qq~
 <table border="0" width="70%" cellspacing="1" cellpadding="3" class="bordercolor" align="center">
 <tr>
 <td class="titlebg">
@@ -96,189 +104,226 @@ sub Attachments {
 </tr>
 </table>~;
 
-      $yytitle = "$fatxt{'36'}";
-      $action_area = "manageattachments";
-      &AdminTemplate;
+    $yytitle     = "$fatxt{'36'}";
+    $action_area = "manageattachments";
+    &AdminTemplate;
 }
 
 sub RemoveOldAttachments {
-      &is_admin_or_gmod;
+    &is_admin_or_gmod;
 
-      my $maxdaysattach = $FORM{'maxdaysattach'} || $INFO{'maxdaysattach'};
-      if ($maxdaysattach !~ /^[0-9]+$/) { &admin_fatal_error("only_numbers_allowed"); }
+    my $maxdaysattach = $FORM{'maxdaysattach'} || $INFO{'maxdaysattach'};
+    if ( $maxdaysattach !~ /^[0-9]+$/ ) {
+        &admin_fatal_error("only_numbers_allowed");
+    }
 
-      # Set up the multi-step action
-      $time_to_jump = time() + $max_process_time;
+    # Set up the multi-step action
+    $time_to_jump = time() + $max_process_time;
 
-      &automaintenance('on');
+    &automaintenance('on');
 
-      opendir(ATT, $uploaddir) || &admin_fatal_error('cannot_open', "$uploaddir", 1);
-      my @attachments = sort( grep(/\w+$/, readdir(ATT)) );
-      closedir(ATT);
+    opendir( ATT, $uploaddir )
+      || &admin_fatal_error( 'cannot_open', "$uploaddir", 1 );
+    my @attachments = sort( grep( /\w+$/, readdir(ATT) ) );
+    closedir(ATT);
 
-      fopen(AML, "$vardir/attachments.txt");
-      my @attachmentstxt = <AML>;
-      fclose(AML);
+    fopen( AML, "$vardir/attachments.txt" );
+    my @attachmentstxt = <AML>;
+    fclose(AML);
 
-      my (%att,@line);
-      foreach (@attachmentstxt) {
-            @line = split(/\|/, $_);
-            $att{$line[7]} = $line[0];
-      }
+    my ( %att, @line );
+    foreach (@attachmentstxt) {
+        @line = split( /\|/, $_ );
+        $att{ $line[7] } = $line[0];
+    }
 
-      my $info;
-      if (!@attachments) {
-            fopen(ATT, ">$vardir/attachments.txt") || &admin_fatal_error("cannot_open","$vardir/attachments.txt", 1);
-            print ATT '';
-            fclose(ATT);
+    my $info;
+    if ( !@attachments ) {
+        fopen( ATT, ">$vardir/attachments.txt" )
+          || &admin_fatal_error( "cannot_open", "$vardir/attachments.txt", 1 );
+        print ATT '';
+        fclose(ATT);
 
-            $info = qq~<br /><i>$fatxt{'48'}.</i>~;
+        $info = qq~<br /><i>$fatxt{'48'}.</i>~;
 
-      } else {
-            unlink("$vardir/rem_old_attach.tmp") unless exists $INFO{'next'};
+    }
+    else {
+        unlink("$vardir/rem_old_attach.tmp") unless exists $INFO{'next'};
 
-            my %rem_attachments;
-            for (my $a = ($INFO{'next'} || 0); $a < @attachments; $a++) {
-                  # -M => Script start time minus file modification time, in days.
-                  my $age = sprintf("%.2f", -M "$uploaddir/$attachments[$a]");
-                  if ($age <= $maxdaysattach) {
-                        # If the attachment is not too old
-                        $info .= qq~<br />$attachments[$a] = $age $admin_txt{'122'}.~;
+        my %rem_attachments;
+        for ( my $a = ( $INFO{'next'} || 0 ) ; $a < @attachments ; $a++ ) {
 
-                  } elsif (exists $att{$attachments[$a]}) {
-                        $rem_attachments{$att{$attachments[$a]}} .= $rem_attachments{$att{$attachments[$a]}} ? "|$attachments[$a]" : $attachments[$a];
-                        $info .= qq~<br /><i>$attachments[$a]</i> $fatxt{'1'} = $age $admin_txt{'122'}.~;
-                  }
+            # -M => Script start time minus file modification time, in days.
+            my $age = sprintf( "%.2f", -M "$uploaddir/$attachments[$a]" );
+            if ( $age <= $maxdaysattach ) {
 
-                  if ($time_to_jump < time() && ($a + 1) < @attachments) {
-                        # save the $info of this run until the end of 'RemoveOldAttachments'
-                        fopen(FILE, ">>$vardir/rem_old_attach.tmp") || &admin_fatal_error('cannot_open', "$vardir/rem_old_attach.tmp", 1);
-                        print $info;
-                        fclose(FILE);
+                # If the attachment is not too old
+                $info .= qq~<br />$attachments[$a] = $age $admin_txt{'122'}.~;
 
-                        $yySetLocation = qq~$adminurl?action=removeoldattachments;maxdaysattach=$maxdaysattach;next=~ . ($a + 1 - &RemoveAttachments(\%rem_attachments));
-                        &redirectexit;
-                  }
+            }
+            elsif ( exists $att{ $attachments[$a] } ) {
+                $rem_attachments{ $att{ $attachments[$a] } } .=
+                  $rem_attachments{ $att{ $attachments[$a] } }
+                  ? "|$attachments[$a]"
+                  : $attachments[$a];
+                $info .=
+qq~<br /><i>$attachments[$a]</i> $fatxt{'1'} = $age $admin_txt{'122'}.~;
             }
 
-            &RemoveAttachments(\%rem_attachments);
-      }
+            if ( $time_to_jump < time() && ( $a + 1 ) < @attachments ) {
 
-      &automaintenance('off');
+            # save the $info of this run until the end of 'RemoveOldAttachments'
+                fopen( FILE, ">>$vardir/rem_old_attach.tmp" )
+                  || &admin_fatal_error( 'cannot_open',
+                    "$vardir/rem_old_attach.tmp", 1 );
+                print $info;
+                fclose(FILE);
 
-      $yymain .= qq~<b>$fatxt{'32'} $maxdaysattach $fatxt{'58'}.</b><br />~;
+                $yySetLocation =
+qq~$adminurl?action=removeoldattachments;maxdaysattach=$maxdaysattach;next=~
+                  . ( $a + 1 - &RemoveAttachments( \%rem_attachments ) );
+                &redirectexit;
+            }
+        }
 
-      fopen(FILE, "$vardir/rem_old_attach.tmp");
-      $yymain .= join('', <FILE>) . $info;
-      fclose(FILE);
-      unlink("$vardir/rem_old_attach.tmp");
+        &RemoveAttachments( \%rem_attachments );
+    }
 
-      fopen(FILE, ">$vardir/oldestattach.txt");
-      print FILE $maxdaysattach;
-      fclose(FILE);
+    &automaintenance('off');
 
-      $yytitle     = "$fatxt{'34'} $maxdaysattach";
-      $action_area = "removeoldattachments";
-      &AdminTemplate;
+    $yymain .= qq~<b>$fatxt{'32'} $maxdaysattach $fatxt{'58'}.</b><br />~;
+
+    fopen( FILE, "$vardir/rem_old_attach.tmp" );
+    $yymain .= join( '', <FILE> ) . $info;
+    fclose(FILE);
+    unlink("$vardir/rem_old_attach.tmp");
+
+    fopen( FILE, ">$vardir/oldestattach.txt" );
+    print FILE $maxdaysattach;
+    fclose(FILE);
+
+    $yytitle     = "$fatxt{'34'} $maxdaysattach";
+    $action_area = "removeoldattachments";
+    &AdminTemplate;
 }
 
 sub RemoveBigAttachments {
-      &is_admin_or_gmod;
+    &is_admin_or_gmod;
 
-      my $maxsizeattach = $FORM{'maxsizeattach'} || $INFO{'maxsizeattach'};
-      if ($maxsizeattach !~ /^[0-9]+$/) { &admin_fatal_error("only_numbers_allowed"); }
+    my $maxsizeattach = $FORM{'maxsizeattach'} || $INFO{'maxsizeattach'};
+    if ( $maxsizeattach !~ /^[0-9]+$/ ) {
+        &admin_fatal_error("only_numbers_allowed");
+    }
 
-      # Set up the multi-step action
-      $time_to_jump = time() + $max_process_time;
+    # Set up the multi-step action
+    $time_to_jump = time() + $max_process_time;
 
-      &automaintenance('on');
+    &automaintenance('on');
 
-      opendir(ATT, $uploaddir) || &admin_fatal_error('cannot_open', "$uploaddir", 1);
-      my @attachments = sort( grep(/\w+$/, readdir(ATT)) );
-      closedir(ATT);
+    opendir( ATT, $uploaddir )
+      || &admin_fatal_error( 'cannot_open', "$uploaddir", 1 );
+    my @attachments = sort( grep( /\w+$/, readdir(ATT) ) );
+    closedir(ATT);
 
-      fopen(FILE, "$vardir/attachments.txt");
-      @attachmentstxt = <FILE>;
-      fclose(FILE);
+    fopen( FILE, "$vardir/attachments.txt" );
+    @attachmentstxt = <FILE>;
+    fclose(FILE);
 
-      my (%att,@line);
-      foreach (@attachmentstxt) {
-            @line = split(/\|/, $_);
-            $att{$line[7]} = $line[0];
-      }
+    my ( %att, @line );
+    foreach (@attachmentstxt) {
+        @line = split( /\|/, $_ );
+        $att{ $line[7] } = $line[0];
+    }
 
-      my $info;
-      if (!@attachments) {
-            fopen(ATT, ">$vardir/attachments.txt") || &admin_fatal_error("cannot_open","$vardir/attachments.txt", 1);
-            print ATT '';
-            fclose(ATT);
+    my $info;
+    if ( !@attachments ) {
+        fopen( ATT, ">$vardir/attachments.txt" )
+          || &admin_fatal_error( "cannot_open", "$vardir/attachments.txt", 1 );
+        print ATT '';
+        fclose(ATT);
 
-            $info = qq~<br /><i>$fatxt{'48'}.</i>~;
+        $info = qq~<br /><i>$fatxt{'48'}.</i>~;
 
-      } else {
-            unlink("$vardir/rem_big_attach.tmp") unless exists $INFO{'next'};
+    }
+    else {
+        unlink("$vardir/rem_big_attach.tmp") unless exists $INFO{'next'};
 
-            my (%rem_attachments,@line);
-            for ($a = ($INFO{'next'} || 0); $a < @attachments; $a++) {
-                  my $size = sprintf("%.2f", ((-s "$uploaddir/$attachments[$a]") / 1024));
-                  if ($size <= $maxsizeattach) {
-                        # If the attachment is not too big
-                        $info .= qq~<br />$attachments[$a] = $size KB~;
+        my ( %rem_attachments, @line );
+        for ( $a = ( $INFO{'next'} || 0 ) ; $a < @attachments ; $a++ ) {
+            my $size =
+              sprintf( "%.2f",
+                ( ( -s "$uploaddir/$attachments[$a]" ) / 1024 ) );
+            if ( $size <= $maxsizeattach ) {
 
-                  } elsif (exists $att{$attachments[$a]}) {
-                        $rem_attachments{$att{$attachments[$a]}} .= $rem_attachments{$att{$attachments[$a]}} ? "|$attachments[$a]" : $attachments[$a];
-                        $info .= qq~<br /><i>$attachments[$a]</i> $fatxt{'1'} = $size KB~;
-                  }
+                # If the attachment is not too big
+                $info .= qq~<br />$attachments[$a] = $size KB~;
 
-                  if ($time_to_jump < time() && ($a + 1) < @attachments) {
-                        # save the $info of this run until the end of 'RemoveBigAttachments'
-                        fopen(FILE, ">>$vardir/rem_big_attach.tmp") || &admin_fatal_error('cannot_open', "$vardir/rem_big_attach.tmp", 1);
-                        print $info;
-                        fclose(FILE);
-
-                        $yySetLocation = qq~$adminurl?action=removebigattachments;maxsizeattach=$maxsizeattach;next=~ . ($a + 1 - &RemoveAttachments(\%rem_attachments));
-                        &redirectexit;
-                  }
+            }
+            elsif ( exists $att{ $attachments[$a] } ) {
+                $rem_attachments{ $att{ $attachments[$a] } } .=
+                  $rem_attachments{ $att{ $attachments[$a] } }
+                  ? "|$attachments[$a]"
+                  : $attachments[$a];
+                $info .=
+                  qq~<br /><i>$attachments[$a]</i> $fatxt{'1'} = $size KB~;
             }
 
-            &RemoveAttachments(\%rem_attachments);
-      }
+            if ( $time_to_jump < time() && ( $a + 1 ) < @attachments ) {
 
-      $yymain .= qq~<b>$fatxt{'33'} $maxsizeattach KB.</b><br />~;
+            # save the $info of this run until the end of 'RemoveBigAttachments'
+                fopen( FILE, ">>$vardir/rem_big_attach.tmp" )
+                  || &admin_fatal_error( 'cannot_open',
+                    "$vardir/rem_big_attach.tmp", 1 );
+                print $info;
+                fclose(FILE);
 
-      fopen(FILE, "$vardir/rem_big_attach.tmp");
-      $yymain .= join('', <FILE>) . $info;
-      fclose(FILE);
-      unlink("$vardir/rem_big_attach.tmp");
+                $yySetLocation =
+qq~$adminurl?action=removebigattachments;maxsizeattach=$maxsizeattach;next=~
+                  . ( $a + 1 - &RemoveAttachments( \%rem_attachments ) );
+                &redirectexit;
+            }
+        }
 
-      fopen(FILE, ">$vardir/maxattachsize.txt");
-      print FILE $maxsizeattach;
-      fclose(FILE);
+        &RemoveAttachments( \%rem_attachments );
+    }
 
-      &automaintenance('off');
+    $yymain .= qq~<b>$fatxt{'33'} $maxsizeattach KB.</b><br />~;
 
-      $yytitle = "$fatxt{'35'} $maxsizeattach KB";
-      $action_area = "removebigattachments";
-      &AdminTemplate;
+    fopen( FILE, "$vardir/rem_big_attach.tmp" );
+    $yymain .= join( '', <FILE> ) . $info;
+    fclose(FILE);
+    unlink("$vardir/rem_big_attach.tmp");
+
+    fopen( FILE, ">$vardir/maxattachsize.txt" );
+    print FILE $maxsizeattach;
+    fclose(FILE);
+
+    &automaintenance('off');
+
+    $yytitle     = "$fatxt{'35'} $maxsizeattach KB";
+    $action_area = "removebigattachments";
+    &AdminTemplate;
 }
 
 sub Attachments2 {
-      &is_admin_or_gmod;
+    &is_admin_or_gmod;
 
-      fopen(AML, "$vardir/attachments.txt");
-      my @attachinput = <AML>;
-      fclose(AML);
-      my $max = @attachinput;
+    fopen( AML, "$vardir/attachments.txt" );
+    my @attachinput = <AML>;
+    fclose(AML);
+    my $max = @attachinput;
 
-      my $action = $INFO{'action'};
-      my $sort = $INFO{'sort'} || 6;
-      my $newstart = $INFO{'newstart'} || 0;
+    my $action   = $INFO{'action'};
+    my $sort     = $INFO{'sort'} || 6;
+    my $newstart = $INFO{'newstart'} || 0;
 
-      if (!$max) {
-            $viewattachments .= qq~<tr><td class="windowbg2" colspan="8"><center><b><i>$fatxt{'48'}</i></b></center></td></tr>~;
+    if ( !$max ) {
+        $viewattachments .=
+qq~<tr><td class="windowbg2" colspan="8"><center><b><i>$fatxt{'48'}</i></b></center></td></tr>~;
 
-      } else {
-            $yymain .= qq~
+    }
+    else {
+        $yymain .= qq~
             <script language="JavaScript1.2" type="text/javascript">
             <!--
                   function checkAll() {
@@ -296,64 +341,115 @@ sub Attachments2 {
 
             <form name="del_attachments" action="$adminurl?action=deleteattachment" method="post" style="display: inline;">~;
 
-            my @attachments;
-            if ($sort > 0) { # sort ascending
-                  if ($sort == 5 || $sort == 6 || $sort == 8) {
-                        @attachments = sort { (split(/\|/, $a))[$sort] <=> (split(/\|/, $b))[$sort]; } @attachinput; # sort size, date, count numerically
-                  } elsif ($sort == 100) {
-                        @attachments = sort { lc((split(/\./, (split(/\|/, $a))[7]))[1]) cmp lc((split(/\./, (split(/\|/, $b))[7]))[1]); } @attachinput; # sort extension lexically
-                  } else {
-                        @attachments = sort { lc((split(/\|/, $a))[$sort]) cmp lc((split(/\|/, $b))[$sort]); } @attachinput; # sort lexically
-                  }
-            } else { # sort descending
-                  if ($sort == -5 || $sort == -6 || $sort == -8) {
-                        @attachments = sort { (split(/\|/, $b))[-$sort] <=> (split(/\|/, $a))[-$sort]; } @attachinput; # sort size, date, count numerically
-                  } elsif ($sort == -100) {
-                        @attachments = sort { lc((split(/\./, (split(/\|/, $b))[7]))[1]) cmp lc((split(/\./, (split(/\|/, $a))[7]))[1]); } @attachinput; # sort extension lexically
-                  } else {
-                        @attachments = sort { lc((split(/\|/, $b))[-$sort]) cmp lc((split(/\|/, $a))[-$sort]); } @attachinput; # sort lexically
-                  }
+        my @attachments;
+        if ( $sort > 0 ) {    # sort ascending
+            if ( $sort == 5 || $sort == 6 || $sort == 8 ) {
+                @attachments = sort {
+                    ( split( /\|/, $a ) )[$sort]
+                      <=> ( split( /\|/, $b ) )[$sort];
+                } @attachinput;    # sort size, date, count numerically
+            }
+            elsif ( $sort == 100 ) {
+                @attachments = sort {
+                    lc(   ( split( /\./, ( split( /\|/, $a ) )[7] ) )[1] ) cmp
+                      lc( ( split( /\./, ( split( /\|/, $b ) )[7] ) )[1] );
+                } @attachinput;    # sort extension lexically
+            }
+            else {
+                @attachments = sort {
+                    lc(   ( split( /\|/, $a ) )[$sort] ) cmp
+                      lc( ( split( /\|/, $b ) )[$sort] );
+                } @attachinput;    # sort lexically
+            }
+        }
+        else {                     # sort descending
+            if ( $sort == -5 || $sort == -6 || $sort == -8 ) {
+                @attachments = sort {
+                    ( split( /\|/, $b ) )[ -$sort ]
+                      <=> ( split( /\|/, $a ) )[ -$sort ];
+                } @attachinput;    # sort size, date, count numerically
+            }
+            elsif ( $sort == -100 ) {
+                @attachments = sort {
+                    lc(   ( split( /\./, ( split( /\|/, $b ) )[7] ) )[1] ) cmp
+                      lc( ( split( /\./, ( split( /\|/, $a ) )[7] ) )[1] );
+                } @attachinput;    # sort extension lexically
+            }
+            else {
+                @attachments = sort {
+                    lc(   ( split( /\|/, $b ) )[ -$sort ] ) cmp
+                      lc( ( split( /\|/, $a ) )[ -$sort ] );
+                } @attachinput;    # sort lexically
+            }
+        }
+
+        $postdisplaynum = 8;
+        $newstart       = ( int( $newstart / 25 ) ) * 25;
+        $tmpa           = 1;
+        if ( $newstart >= ( ( $postdisplaynum - 1 ) * 25 ) ) {
+            $startpage = $newstart - ( ( $postdisplaynum - 1 ) * 25 );
+            $tmpa = int( $startpage / 25 ) + 1;
+        }
+        if ( $max >= $newstart + ( $postdisplaynum * 25 ) ) {
+            $endpage = $newstart + ( $postdisplaynum * 25 );
+        }
+        else { $endpage = $max; }
+        if ( $startpage > 0 ) {
+            $pageindex =
+qq~<a href="$adminurl?action=$action;newstart=0;sort=$sort" style="font-weight: normal;">1</a>&nbsp;...&nbsp;~;
+        }
+        if ( $startpage == 25 ) {
+            $pageindex =
+qq~<a href="$adminurl?action=$action;newstart=0;sort=$sort" style="font-weight: normal;">1</a>&nbsp;~;
+        }
+        for ( $counter = $startpage ; $counter < $endpage ; $counter += 25 ) {
+            $pageindex .=
+              $newstart == $counter
+              ? qq~<b>$tmpa</b>&nbsp;~
+              : qq~<a href="$adminurl?action=$action;newstart=$counter;sort=$sort" style="font-weight: normal;">$tmpa</a>&nbsp;~;
+            $tmpa++;
+        }
+        $lastpn  = int( $max / 25 ) + 1;
+        $lastptn = ( $lastpn - 1 ) * 25;
+        if ( $endpage < $max - (25) ) { $pageindexadd = qq~...&nbsp;~; }
+        if ( $endpage != $max ) {
+            $pageindexadd .=
+qq~<a href="$adminurl?action=$action;newstart=$lastptn;sort=$sort">$lastpn</a>~;
+        }
+        $pageindex .= $pageindexadd;
+
+        $pageindex =
+qq~<div class="small" style="text-align: right; vertical-align: middle;">$fatxt{'64'}: $pageindex</div>~;
+
+        $numbegin = ( $newstart + 1 );
+        $numend   = ( $newstart + 25 );
+        if   ( $numend > $max ) { $numend  = $max; }
+        if   ( $max == 0 )      { $numshow = ''; }
+        else                    { $numshow = qq~($numbegin - $numend)~; }
+
+        my ( %attach_gif, $ext );
+        foreach $row ( splice( @attachments, $newstart, 25 ) ) {
+            my (
+                $amthreadid, $amreplies,      $amthreadsub,
+                $amposter,   $amcurrentboard, $amkb,
+                $amdate,     $amfn,           $amcount
+            ) = split( /\|/, $row );
+
+            $amfn =~ /\.(.+?)$/;
+            $ext = $1;
+            unless ( exists $attach_gif{$ext} ) {
+                $attach_gif{$ext} =
+                  ( $ext && -e "$forumstylesdir/$useimages/$ext.gif" )
+                  ? "$ext.gif"
+                  : "paperclip.gif";
             }
 
-            $postdisplaynum = 8;
-            $newstart = (int($newstart / 25)) * 25;
-            $tmpa = 1;
-            if ($newstart >= (($postdisplaynum - 1) * 25)) { $startpage = $newstart - (($postdisplaynum - 1) * 25); $tmpa = int( $startpage / 25 ) + 1; }
-            if ($max >= $newstart + ($postdisplaynum * 25)) { $endpage = $newstart + ($postdisplaynum * 25); } else { $endpage = $max; }
-            if ($startpage > 0) { $pageindex = qq~<a href="$adminurl?action=$action;newstart=0;sort=$sort" style="font-weight: normal;">1</a>&nbsp;...&nbsp;~; }
-            if ($startpage == 25) { $pageindex = qq~<a href="$adminurl?action=$action;newstart=0;sort=$sort" style="font-weight: normal;">1</a>&nbsp;~;}
-            for ($counter = $startpage; $counter < $endpage; $counter += 25) {
-                  $pageindex .= $newstart == $counter ? qq~<b>$tmpa</b>&nbsp;~ : qq~<a href="$adminurl?action=$action;newstart=$counter;sort=$sort" style="font-weight: normal;">$tmpa</a>&nbsp;~;
-                  $tmpa++;
+            $amdate = &timeformat($amdate);
+            if ( length($amthreadsub) > 20 ) {
+                $amthreadsub = substr( $amthreadsub, 0, 20 ) . "...";
             }
-            $lastpn = int($max / 25) + 1;
-            $lastptn = ($lastpn - 1) * 25;
-            if ($endpage < $max - (25) ) { $pageindexadd = qq~...&nbsp;~; }
-            if ($endpage != $max) { $pageindexadd .= qq~<a href="$adminurl?action=$action;newstart=$lastptn;sort=$sort">$lastpn</a>~; }
-            $pageindex .= $pageindexadd;
 
-            $pageindex = qq~<div class="small" style="text-align: right; vertical-align: middle;">$fatxt{'64'}: $pageindex</div>~;
-
-            $numbegin = ($newstart + 1);
-            $numend = ($newstart + 25);
-            if ($numend > $max) { $numend  = $max; }
-            if ($max == 0) { $numshow = ''; }
-            else { $numshow = qq~($numbegin - $numend)~; }
-
-            my (%attach_gif,$ext);
-            foreach $row (splice(@attachments, $newstart, 25)) {
-                  my ($amthreadid, $amreplies, $amthreadsub, $amposter, $amcurrentboard, $amkb, $amdate, $amfn, $amcount) = split(/\|/, $row);
-
-                  $amfn =~ /\.(.+?)$/;
-                  $ext = $1;
-                  unless (exists $attach_gif{$ext}) {
-                        $attach_gif{$ext} = ($ext && -e "$forumstylesdir/$useimages/$ext.gif") ? "$ext.gif" : "paperclip.gif";
-                  }
-
-                  $amdate = &timeformat($amdate);
-                  if (length($amthreadsub) > 20) { $amthreadsub = substr($amthreadsub, 0, 20) . "..."; }
-
-                  $viewattachments .= qq~
+            $viewattachments .= qq~
             <tr>
             <td class="windowbg2" align="center" valign="middle"><input type="checkbox" name="del_$amthreadid" value="$amfn" /></td>
             <td class="windowbg2" align="left" valign="middle"><a href="$uploadurl/$amfn" target="_blank"> $amfn</a></td>
@@ -364,9 +460,9 @@ sub Attachments2 {
             <td class="windowbg2" align="left" valign="middle"><a href="$scripturl?num=$amthreadid/$amreplies#$amreplies" target="blank">$amthreadsub</a></td>
             <td class="windowbg2" align="center" valign="middle">$amposter</td>
             </tr>\n~;
-            }
+        }
 
-            $viewattachments .= qq~
+        $viewattachments .= qq~
             <tr>
             <td class="catbg" align="center">
             <input type="checkbox" name="checkall" id="checkall" value="" onclick="if(this.checked){checkAll();}else{uncheckAll();}" />
@@ -380,19 +476,19 @@ sub Attachments2 {
             </tr>
             ~;
 
-            $yymain .= qq~
+        $yymain .= qq~
             <input type="hidden" name="newstart" value="$newstart" />~;
-      }
+    }
 
-      my $class_sortattach = $sort =~ /7/   ? 'catbg' : 'windowbg';
-      my $class_sorttype   = $sort =~ /100/ ? 'catbg' : 'windowbg';
-      my $class_sortsize   = $sort =~ /5/   ? 'catbg' : 'windowbg';
-      my $class_sortdate   = $sort =~ /6/   ? 'catbg' : 'windowbg';
-      my $class_sorcount   = $sort =~ /8/   ? 'catbg' : 'windowbg';
-      my $class_sortsubj   = $sort =~ /2/   ? 'catbg' : 'windowbg';
-      my $class_sortuser   = $sort =~ /3/   ? 'catbg' : 'windowbg';
+    my $class_sortattach = $sort =~ /7/   ? 'catbg' : 'windowbg';
+    my $class_sorttype   = $sort =~ /100/ ? 'catbg' : 'windowbg';
+    my $class_sortsize   = $sort =~ /5/   ? 'catbg' : 'windowbg';
+    my $class_sortdate   = $sort =~ /6/   ? 'catbg' : 'windowbg';
+    my $class_sorcount   = $sort =~ /8/   ? 'catbg' : 'windowbg';
+    my $class_sortsubj   = $sort =~ /2/   ? 'catbg' : 'windowbg';
+    my $class_sortuser   = $sort =~ /3/   ? 'catbg' : 'windowbg';
 
-      $yymain .= qq~
+    $yymain .= qq~
 <table border="0" cellspacing="1" cellpadding="8" class="bordercolor" align="center" width="90%">
       <tr>
             <td class="titlebg" colspan="8">
@@ -414,145 +510,194 @@ sub Attachments2 {
       </tr>
       <tr>
             <td align="center" class="windowbg"><b>$fatxt{'45'}</b></td>
-            <td onclick="location.href='$adminurl?action=manageattachments2;sort=~ . ($sort == 7 ? -7 : 7) . qq~';" align="center" class="$class_sortattach" style="border: 0px; border-style: outset; cursor: pointer;"><a href="$adminurl?action=manageattachments2;sort=~ . ($sort == 7 ? -7 : 7) . qq~"><b>$fatxt{'40'}</b></a></td>
-            <td onclick="location.href='$adminurl?action=manageattachments2;sort=~ . ($sort == 100 ? -100 : 100) . qq~';" align="center" class="$class_sorttype" style="border: 0px; border-style: outset; cursor: pointer;"><a href="$adminurl?action=manageattachments2;sort=~ . ($sort == 100 ? -100 : 100) . qq~"><b>$fatxt{'40a'}</b></a></td>
-            <td onclick="location.href='$adminurl?action=manageattachments2;sort=~ . ($sort == 5 ? -5 : 5) . qq~';" align="center" class="$class_sortsize" style="border: 0px; border-style: outset; cursor: pointer;"><a href="$adminurl?action=manageattachments2;sort=~ . ($sort == -5 ? 5 : -5) . qq~"><b>$fatxt{'41'}</b></a></td>
-            <td onclick="location.href='$adminurl?action=manageattachments2;sort=~ . ($sort == 6 ? -6 : 6) . qq~';" align="center" class="$class_sortdate" style="border: 0px; border-style: outset; cursor: pointer;"><a href="$adminurl?action=manageattachments2;sort=~ . ($sort == -6 ? 6 : -6) . qq~"><b>$fatxt{'43'}</b></a></td>
-            <td onclick="location.href='$adminurl?action=manageattachments2;sort=~ . ($sort == 8 ? -8 : 8) . qq~';" align="center" class="$class_sorcount" style="border: 0px; border-style: outset; cursor: pointer;"><a href="$adminurl?action=manageattachments2;sort=~ . ($sort == -8 ? 8 : -8) . qq~"><b>$fatxt{'41a'}</b></a></td>
-            <td onclick="location.href='$adminurl?action=manageattachments2;sort=~ . ($sort == 2 ? -2 : 2) . qq~';" align="center" class="$class_sortsubj" style="border: 0px; border-style: outset; cursor: pointer;"><a href="$adminurl?action=manageattachments2;sort=~ . ($sort == 2 ? -2 : 2) . qq~"><b>$fatxt{'44'}</b></a></td>
-            <td onclick="location.href='$adminurl?action=manageattachments2;sort=~ . ($sort == 3 ? -3 : 3) . qq~';" align="center" class="$class_sortuser" style="border: 0px; border-style: outset; cursor: pointer;"><a href="$adminurl?action=manageattachments2;sort=~ . ($sort == 3 ? -3 : 3) . qq~"><b>$fatxt{'42'}</b></a></td>
+            <td onclick="location.href='$adminurl?action=manageattachments2;sort=~
+      . ( $sort == 7 ? -7 : 7 )
+      . qq~';" align="center" class="$class_sortattach" style="border: 0px; border-style: outset; cursor: pointer;"><a href="$adminurl?action=manageattachments2;sort=~
+      . ( $sort == 7 ? -7 : 7 )
+      . qq~"><b>$fatxt{'40'}</b></a></td>
+            <td onclick="location.href='$adminurl?action=manageattachments2;sort=~
+      . ( $sort == 100 ? -100 : 100 )
+      . qq~';" align="center" class="$class_sorttype" style="border: 0px; border-style: outset; cursor: pointer;"><a href="$adminurl?action=manageattachments2;sort=~
+      . ( $sort == 100 ? -100 : 100 )
+      . qq~"><b>$fatxt{'40a'}</b></a></td>
+            <td onclick="location.href='$adminurl?action=manageattachments2;sort=~
+      . ( $sort == 5 ? -5 : 5 )
+      . qq~';" align="center" class="$class_sortsize" style="border: 0px; border-style: outset; cursor: pointer;"><a href="$adminurl?action=manageattachments2;sort=~
+      . ( $sort == -5 ? 5 : -5 )
+      . qq~"><b>$fatxt{'41'}</b></a></td>
+            <td onclick="location.href='$adminurl?action=manageattachments2;sort=~
+      . ( $sort == 6 ? -6 : 6 )
+      . qq~';" align="center" class="$class_sortdate" style="border: 0px; border-style: outset; cursor: pointer;"><a href="$adminurl?action=manageattachments2;sort=~
+      . ( $sort == -6 ? 6 : -6 )
+      . qq~"><b>$fatxt{'43'}</b></a></td>
+            <td onclick="location.href='$adminurl?action=manageattachments2;sort=~
+      . ( $sort == 8 ? -8 : 8 )
+      . qq~';" align="center" class="$class_sorcount" style="border: 0px; border-style: outset; cursor: pointer;"><a href="$adminurl?action=manageattachments2;sort=~
+      . ( $sort == -8 ? 8 : -8 )
+      . qq~"><b>$fatxt{'41a'}</b></a></td>
+            <td onclick="location.href='$adminurl?action=manageattachments2;sort=~
+      . ( $sort == 2 ? -2 : 2 )
+      . qq~';" align="center" class="$class_sortsubj" style="border: 0px; border-style: outset; cursor: pointer;"><a href="$adminurl?action=manageattachments2;sort=~
+      . ( $sort == 2 ? -2 : 2 )
+      . qq~"><b>$fatxt{'44'}</b></a></td>
+            <td onclick="location.href='$adminurl?action=manageattachments2;sort=~
+      . ( $sort == 3 ? -3 : 3 )
+      . qq~';" align="center" class="$class_sortuser" style="border: 0px; border-style: outset; cursor: pointer;"><a href="$adminurl?action=manageattachments2;sort=~
+      . ( $sort == 3 ? -3 : 3 )
+      . qq~"><b>$fatxt{'42'}</b></a></td>
       </tr>
       $viewattachments
 </table>~;
 
-      $yymain .= '</form>' if $max;
+    $yymain .= '</form>' if $max;
 
-      $yytitle = "$fatxt{'37'}";
-      $action_area = "manageattachments";
-      &AdminTemplate;
+    $yytitle     = "$fatxt{'37'}";
+    $action_area = "manageattachments";
+    &AdminTemplate;
 }
 
 sub DeleteAttachments {
-      &is_admin_or_gmod;
+    &is_admin_or_gmod;
 
-      &automaintenance('on') if !$FORM{'formsession'};
+    &automaintenance('on') if !$FORM{'formsession'};
 
-      my %rem_att;
-      foreach (keys(%FORM)) {
-            next unless $_ =~ /^del_(\d+)$/;
-            my $thread = $1;
-            $rem_att{$thread} = $FORM{$_};
-            $rem_att{$thread} =~ s/, /|/g;
-      }
+    my %rem_att;
+    foreach ( keys(%FORM) ) {
+        next unless $_ =~ /^del_(\d+)$/;
+        my $thread = $1;
+        $rem_att{$thread} = $FORM{$_};
+        $rem_att{$thread} =~ s/, /|/g;
+    }
 
-      &RemoveAttachments(\%rem_att);
+    &RemoveAttachments( \%rem_att );
 
-      &automaintenance('off') if !$FORM{'formsession'};
+    &automaintenance('off') if !$FORM{'formsession'};
 
-      $yySetLocation = $FORM{'formsession'} ? qq~$scripturl?action=viewdownloads;thread=~ . (keys(%rem_att))[0] . qq~;newstart=$FORM{'newstart'}~ : qq~$adminurl?action=manageattachments2;newstart=$FORM{'newstart'}~;
-      &redirectexit;
+    $yySetLocation =
+      $FORM{'formsession'}
+      ? qq~$scripturl?action=viewdownloads;thread=~
+      . ( keys(%rem_att) )[0]
+      . qq~;newstart=$FORM{'newstart'}~
+      : qq~$adminurl?action=manageattachments2;newstart=$FORM{'newstart'}~;
+    &redirectexit;
 }
 
 sub FullRebuildAttachents {
-      &is_admin_or_gmod();
+    &is_admin_or_gmod();
 
-      unless (defined $INFO{'boardnum'}) {
-            &automaintenance('on');
+    unless ( defined $INFO{'boardnum'} ) {
+        &automaintenance('on');
 
-            unlink "$vardir/newattachments.tmp";
-            $yySetLocation = qq~$adminurl?action=rebuildattach;topicnum=0;boardnum=0~;
-            &redirectexit();
-      }
+        unlink "$vardir/newattachments.tmp";
+        $yySetLocation =
+          qq~$adminurl?action=rebuildattach;topicnum=0;boardnum=0~;
+        &redirectexit();
+    }
 
-      # Set up the multi-step action
-      $time_to_jump = time() + $max_process_time;
+    # Set up the multi-step action
+    $time_to_jump = time() + $max_process_time;
 
-      # Get the board list from the forum.master file
-      require "$boardsdir/forum.master";
-      @boardlist = sort( keys(%board) );
+    # Get the board list from the forum.master file
+    require "$boardsdir/forum.master";
+    @boardlist = sort( keys(%board) );
 
-      # Find the current board:
-      my $curboard = $boardlist[$INFO{'boardnum'}];
+    # Find the current board:
+    my $curboard = $boardlist[ $INFO{'boardnum'} ];
 
-      # store all downloadcounts in variable
-      my %attachments;
-      if (-s "$vardir/attachments.txt" > 5) {
-            my ($atfile,$atcount);
-            fopen(ATM, "$vardir/attachments.txt");
-            while (<ATM>) {
-                  (undef, undef, undef, undef, undef, undef, undef, $atfile, $atcount) =split(/\|/, $_);
-                  chomp $atcount;
-                  $attachments{$atfile} = $atcount;
+    # store all downloadcounts in variable
+    my %attachments;
+    if ( -s "$vardir/attachments.txt" > 5 ) {
+        my ( $atfile, $atcount );
+        fopen( ATM, "$vardir/attachments.txt" );
+        while (<ATM>) {
+            (
+                undef, undef, undef,   undef, undef,
+                undef, undef, $atfile, $atcount
+            ) = split( /\|/, $_ );
+            chomp $atcount;
+            $attachments{$atfile} = $atcount;
+        }
+        fclose(ATM);
+    }
+
+    # Get the topic list.
+    fopen( BOARD, "$boardsdir/$curboard.txt" );
+    my @topiclist = <BOARD>;
+    fclose(BOARD);
+
+    my ( $topicnum, @newattachments, $mreplies, $msub, $mname, $mdate, $mfn,
+        $nexttopic );
+    for ( my $i = $INFO{'topicnum'} ; $i < @topiclist ; $i++ ) {
+        ( $topicnum, undef ) = split( /\|/, $topiclist[$i], 2 );
+        fopen( TOPIC, "$datadir/$topicnum.txt" );
+        my @topic = <TOPIC>;
+        fclose(TOPIC);
+        chomp(@topic);
+
+        $mreplies = 0;
+        foreach (@topic) {
+            (
+                $msub, $mname, undef, $mdate, undef, undef, undef,
+                undef, undef,  undef, undef,  undef, $mfn
+            ) = split( /\|/, $_ );
+            foreach ( split( /,/, $mfn ) ) {
+                if ( -e "$uploaddir/$_" ) {
+                    my $asize = int( ( -s "$uploaddir/$_" ) / 1024 ) || 1;
+                    push( @newattachments,
+qq~$topicnum|$mreplies|$msub|$mname|$curboard|$asize|$mdate|$_|~
+                          . ( $attachments{$_} || 0 )
+                          . qq~\n~ );
+                }
             }
-            fclose(ATM);
-      }
+            $mreplies++;
+        }
 
-      # Get the topic list.
-      fopen(BOARD, "$boardsdir/$curboard.txt");
-      my @topiclist = <BOARD>;
-      fclose(BOARD);
+        if ( time() > $time_to_jump && ( $i + 1 ) < @topiclist ) {
+            $nexttopic = $i + 1;
+            last;
+        }
+    }
 
-      my ($topicnum,@newattachments,$mreplies,$msub, $mname, $mdate, $mfn, $nexttopic);
-      for (my $i = $INFO{'topicnum'}; $i < @topiclist; $i++) {
-            ($topicnum, undef) = split(/\|/, $topiclist[$i], 2);
-            fopen(TOPIC, "$datadir/$topicnum.txt");
-            my @topic = <TOPIC>;
-            fclose(TOPIC);
-            chomp(@topic);
+    if (@newattachments) {
+        fopen( NEWATM, ">>$vardir/newattachments.tmp" )
+          || &admin_fatal_error( 'cannot_open', "$vardir/newattachments.tmp",
+            1 );
+        print NEWATM @newattachments;
+        fclose(NEWATM);
+    }
 
-            $mreplies = 0;
-            foreach (@topic) {
-                  ($msub, $mname, undef, $mdate, undef, undef, undef, undef, undef, undef, undef, undef, $mfn) = split(/\|/, $_);
-                  foreach (split(/,/, $mfn)) {
-                        if (-e "$uploaddir/$_") {
-                              my $asize = int((-s "$uploaddir/$_") / 1024) || 1;
-                              push (@newattachments, qq~$topicnum|$mreplies|$msub|$mname|$curboard|$asize|$mdate|$_|~ . ($attachments{$_} || 0) . qq~\n~);
-                        }
-                  }
-                  $mreplies++;
-            }
+    # Prepare to continue...
+    if ($nexttopic) { $INFO{'topicnum'} = $nexttopic; }
+    else            { $INFO{'boardnum'}++; $INFO{'topicnum'} = 0; }
 
-            if (time() > $time_to_jump && ($i + 1) < @topiclist) {
-                  $nexttopic = $i + 1;
-                  last;
-            }
-      }
+    my $numleft = @boardlist - $INFO{'boardnum'};
+    if ( $numleft == 0 ) {
+        fopen( NEWATM, "$vardir/newattachments.tmp" );
+        my @newattachments = <NEWATM>;
+        fclose(NEWATM);
 
-      if (@newattachments) {
-            fopen(NEWATM, ">>$vardir/newattachments.tmp") || &admin_fatal_error('cannot_open', "$vardir/newattachments.tmp", 1);
-            print NEWATM @newattachments;
-            fclose(NEWATM);
-      }
+        fopen( ATM, ">$vardir/attachments.txt" );
+        print ATM
+          sort( { ( split /\|/, $a )[6] <=> ( split /\|/, $b )[6] }
+            @newattachments );
+        fclose(ATM);
+        unlink "$vardir/newattachments.tmp";
 
-      # Prepare to continue...
-      if ($nexttopic) { $INFO{'topicnum'} = $nexttopic; }
-      else { $INFO{'boardnum'}++; $INFO{'topicnum'} = 0; }
+        &automaintenance("off");
+        $yySetLocation = qq~$adminurl?action=remghostattach~;
+        &redirectexit;
+    }
 
-      my $numleft = @boardlist - $INFO{'boardnum'};
-      if ($numleft == 0) {
-            fopen(NEWATM, "$vardir/newattachments.tmp");
-            my @newattachments = <NEWATM>;
-            fclose(NEWATM);
+    # Continue
+    $action_area = 'manageattachments';
+    $yytitle     = "$fatxt{'37'}";
 
-            fopen (ATM, ">$vardir/attachments.txt");
-            print ATM sort( { (split /\|/,$a)[6] <=> (split /\|/,$b)[6] } @newattachments);
-            fclose (ATM);
-            unlink "$vardir/newattachments.tmp";
-
-            &automaintenance("off");
-            $yySetLocation = qq~$adminurl?action=remghostattach~;
-            &redirectexit;
-      }
-
-      # Continue
-      $action_area = 'manageattachments';
-      $yytitle = "$fatxt{'37'}";
-
-      $yymain .= qq~
+    $yymain .= qq~
             <br />
             $rebuild_txt{'1'}<br />
             $rebuild_txt{'5'} $max_process_time $rebuild_txt{'6'}<br />
-            $rebuild_txt{'9'} ~ . (@boardlist - $INFO{'boardnum'}) . "/" . @boardlist . qq~<br />
+            $rebuild_txt{'9'} ~
+      . ( @boardlist - $INFO{'boardnum'} ) . "/" . @boardlist . qq~<br />
             <br />
             <div id="attachcontinued">
             $rebuild_txt{'2'} <a href="$adminurl?action=rebuildattach;topicnum=$INFO{'topicnum'};boardnum=$INFO{'boardnum'}" onclick="rebAttach();">$rebuild_txt{'3'}</a>
@@ -572,83 +717,93 @@ sub FullRebuildAttachents {
       // -->
       </script>~;
 
-      &AdminTemplate();
+    &AdminTemplate();
 }
 
 sub RemoveGhostAttach {
-      &is_admin_or_gmod;
+    &is_admin_or_gmod;
 
-      $yymain .= qq~<b>$fatxt{'62'}</b><br /><br />~;
+    $yymain .= qq~<b>$fatxt{'62'}</b><br /><br />~;
 
-      fopen(ATM, "$vardir/attachments.txt");
-      my @attachmentstxt = <ATM>;
-      fclose(ATM);
+    fopen( ATM, "$vardir/attachments.txt" );
+    my @attachmentstxt = <ATM>;
+    fclose(ATM);
 
-      my %att;
-      foreach (@attachmentstxt) {
-            $att{(split(/\|/, $_))[7]} = 1;
-      }
+    my %att;
+    foreach (@attachmentstxt) {
+        $att{ ( split( /\|/, $_ ) )[7] } = 1;
+    }
 
-      opendir(DIR, $uploaddir);
-      my @filesDIR = grep(/\w+$/, readdir(DIR));
-      close(DIR);
+    opendir( DIR, $uploaddir );
+    my @filesDIR = grep( /\w+$/, readdir(DIR) );
+    close(DIR);
 
-      $yymain .= qq~$fatxt{'61'}:<br />~;
+    $yymain .= qq~$fatxt{'61'}:<br />~;
 
-      foreach my $fileinDIR (@filesDIR) {
-            if (!$att{$fileinDIR}) {
-                  unlink "$uploaddir/$fileinDIR";
-                  $yymain .= qq~<br />$fatxt{'61b'}: $fileinDIR~;
-            }
-      }
+    foreach my $fileinDIR (@filesDIR) {
+        if ( !$att{$fileinDIR} ) {
+            unlink "$uploaddir/$fileinDIR";
+            $yymain .= qq~<br />$fatxt{'61b'}: $fileinDIR~;
+        }
+    }
 
-      $yymain .= qq~<br /><br /><b>$fatxt{'61a'}</b>~;
-      $yytitle = $fatxt{'61'};
-      $action_area = 'manageattachments';
-      &AdminTemplate;
+    $yymain .= qq~<br /><br /><b>$fatxt{'61a'}</b>~;
+    $yytitle     = $fatxt{'61'};
+    $action_area = 'manageattachments';
+    &AdminTemplate;
 }
 
-sub RemoveAttachments { # remove single or multiple attachments stored in a hash-reference
-      my $count = 0;
-      my $ThreadHashref = shift; # usage: ${$ThreadHashref}{'threadnum'} = 'filename1|filename2|...'
-                                 # all attachments of thread are included if filname is undefined (undef)
+sub RemoveAttachments
+{    # remove single or multiple attachments stored in a hash-reference
+    my $count = 0;
+    my $ThreadHashref =
+      shift; # usage: ${$ThreadHashref}{'threadnum'} = 'filename1|filename2|...'
+        # all attachments of thread are included if filname is undefined (undef)
 
-      return $count if !%$ThreadHashref;
+    return $count if !%$ThreadHashref;
 
-      fopen(ATM, "+<$vardir/attachments.txt", 1) || &admin_fatal_error("cannot_open","$vardir/attachments.txt", 1);
-      seek ATM, 0, 0;
-      my @attachments = <ATM>;
-      truncate ATM, 0;
-      seek ATM, 0, 0;
-      my ($athreadnum, $afilename, %del_filename);
-      foreach (@attachments) {
-            (undef, undef, undef, undef, undef, undef, undef, $afilename, undef) = split(/\|/, $_);
-            $del_filename{$afilename}++;
-      }
-      for ($i = 0; $i < @attachments; $i++) {
-            ($athreadnum, undef, undef, undef, undef, undef, undef, $afilename, undef) = split(/\|/, $attachments[$i]);
-            my $del = 0;
-            if (exists ${$ThreadHashref}{$athreadnum}) {
-                  if (defined ${$ThreadHashref}{$athreadnum}) {
-                        foreach (split(/\|/, ${$ThreadHashref}{$athreadnum})) {
-                              if ($_ eq $afilename) { $del = 1; last; }
-                        }
-                  } else {
-                        $del = 1;
-                  }
+    fopen( ATM, "+<$vardir/attachments.txt", 1 )
+      || &admin_fatal_error( "cannot_open", "$vardir/attachments.txt", 1 );
+    seek ATM, 0, 0;
+    my @attachments = <ATM>;
+    truncate ATM, 0;
+    seek ATM, 0, 0;
+    my ( $athreadnum, $afilename, %del_filename );
+    foreach (@attachments) {
+        ( undef, undef, undef, undef, undef, undef, undef, $afilename, undef ) =
+          split( /\|/, $_ );
+        $del_filename{$afilename}++;
+    }
+    for ( $i = 0 ; $i < @attachments ; $i++ ) {
+        (
+            $athreadnum, undef, undef,      undef, undef,
+            undef,       undef, $afilename, undef
+        ) = split( /\|/, $attachments[$i] );
+        my $del = 0;
+        if ( exists ${$ThreadHashref}{$athreadnum} ) {
+            if ( defined ${$ThreadHashref}{$athreadnum} ) {
+                foreach ( split( /\|/, ${$ThreadHashref}{$athreadnum} ) ) {
+                    if ( $_ eq $afilename ) { $del = 1; last; }
+                }
             }
-            if ($del) {
-                  # deletes the file only if NO other entry for the same filename is in the attachments.txt
-                  unlink("$uploaddir/$afilename") if $del_filename{$afilename} == 1;
-                  $del_filename{$afilename}--;
-                  $count++;
-            } else {
-                  print ATM $attachments[$i];
+            else {
+                $del = 1;
             }
-      }
-      fclose(ATM);
+        }
+        if ($del) {
 
-      $count;
+# deletes the file only if NO other entry for the same filename is in the attachments.txt
+            unlink("$uploaddir/$afilename") if $del_filename{$afilename} == 1;
+            $del_filename{$afilename}--;
+            $count++;
+        }
+        else {
+            print ATM $attachments[$i];
+        }
+    }
+    fclose(ATM);
+
+    $count;
 }
 
 1;

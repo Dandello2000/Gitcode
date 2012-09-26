@@ -1,5 +1,6 @@
 ###############################################################################
 # ModList.pl                                                                  #
+# $Date: 9/20/2012 $                                                          #
 ###############################################################################
 # YaBB: Yet another Bulletin Board                                            #
 # Open-Source Community Software for Webmasters                               #
@@ -11,30 +12,36 @@
 # Software by:  The YaBB Development Team                                     #
 #               with assistance from the YaBB community.                      #
 ###############################################################################
+# use strict;
+# use warnings;
+no warnings qw(uninitialized once redefine);
+use CGI::Carp qw(fatalsToBrowser);
+use English '-no_match_vars';
+our $VERSION = 1.0;
 
 $modlistplver = 'YaBB 2.6 $Revision: 1.0 $';
-if ($action eq 'detailedversion') { return 1; }
+if ( $action eq 'detailedversion' ) { return 1; }
 
 sub ListMods {
-      my @installed_mods = ();
+    my @installed_mods = ();
 
-      # You need to list your mod in this file for full compliance.
-      # Add it in the following way:
-      #     $my_mod = "Name of Mod|Author|Description|Version|Date Released";
-      #     push (@installed_mods, "$my_mod");
-      # It is reccomended that you do a "add before" on the end boardmod tag
-      # This preserves the installation order.
+    # You need to list your mod in this file for full compliance.
+    # Add it in the following way:
+    #     $my_mod = "Name of Mod|Author|Description|Version|Date Released";
+    #     push (@installed_mods, "$my_mod");
+    # It is reccomended that you do a "add before" on the end boardmod tag
+    # This preserves the installation order.
 
-      # Also note, you should pick a unique name instead of "$my_mod".
-      # If you mod is called "SuperMod For Doing Cool Things"
-      # You could use "$SuperMod_CoolThings"
+    # Also note, you should pick a unique name instead of "$my_mod".
+    # If you mod is called "SuperMod For Doing Cool Things"
+    # You could use "$SuperMod_CoolThings"
 
 ### BOARDMOD ANCHOR ###
 ### END BOARDMOD ANCHOR ###
 
-      if (!@installed_mods) {
+    if ( !@installed_mods ) {
 
-            $yymain .= qq~
+        $yymain .= qq~
  <div class="bordercolor" style="padding: 0px; width: 99%; margin-left: 0px; margin-right: auto;">
    <table width="100%" cellspacing="1" cellpadding="4">
      <tr valign="middle">
@@ -53,22 +60,23 @@ sub ListMods {
  </div>
 ~;
 
-            $yytitle     = $mod_list{'6'};
-            $action_area = "modlist";
+        $yytitle     = $mod_list{'6'};
+        $action_area = "modlist";
 
-            &AdminTemplate;
-      }
+        &AdminTemplate;
+    }
 
-      foreach $modification (@installed_mods) {
-            chomp($modification);
-            ($mod_anchor, $mod_author, $mod_desc, $mod_version, $mod_date) = split(/\|/, $modification);
+    foreach $modification (@installed_mods) {
+        chomp($modification);
+        ( $mod_anchor, $mod_author, $mod_desc, $mod_version, $mod_date ) =
+          split( /\|/, $modification );
 
-            $mod_displayname = $mod_anchor;
-            $mod_displayname =~ s/\_/ /g;
-            $mod_anchor      =~ s/ /\_/g;
-            $mod_anchor      =~ s/[^\w]//g;
+        $mod_displayname = $mod_anchor;
+        $mod_displayname =~ s/\_/ /g;
+        $mod_anchor      =~ s/ /\_/g;
+        $mod_anchor      =~ s/[^\w]//g;
 
-            $mod_text_list .= qq~
+        $mod_text_list .= qq~
 
      <tr valign="middle">
        <td align="left" class="windowbg2">
@@ -84,7 +92,7 @@ sub ListMods {
 
             ~;
 
-            $full_description .= qq~
+        $full_description .= qq~
  <div class="bordercolor" style="padding: 0px; width: 99%; margin-left: 0px; margin-right: auto;">
    <table width="100%" cellspacing="1" cellpadding="4">
      <tr valign="middle">
@@ -112,9 +120,9 @@ sub ListMods {
 <br />
             ~;
 
-      }
+    }
 
-      $yymain .= qq~
+    $yymain .= qq~
  <div class="bordercolor" style="padding: 0px; width: 99%; margin-left: 0px; margin-right: auto;">
    <table width="100%" cellspacing="1" cellpadding="4">
      <tr valign="middle">
@@ -146,10 +154,10 @@ $full_description
 
 ~;
 
-      $yytitle     = $mod_list{'6'};
-      $action_area = "modlist";
+    $yytitle     = $mod_list{'6'};
+    $action_area = "modlist";
 
-      &AdminTemplate;
+    &AdminTemplate;
 }
 
 1;

@@ -1,5 +1,6 @@
 ###############################################################################
 # MailMembers.pl                                                              #
+# $Date: 9/20/2012 $                                                          #
 ###############################################################################
 # YaBB: Yet another Bulletin Board                                            #
 # Open-Source Community Software for Webmasters                               #
@@ -11,9 +12,15 @@
 # Software by:  The YaBB Development Team                                     #
 #               with assistance from the YaBB community.                      #
 ###############################################################################
+# use strict;
+# use warnings;
+no warnings qw(uninitialized once redefine);
+use CGI::Carp qw(fatalsToBrowser);
+use English '-no_match_vars';
+our $VERSION = 1.0;
 
 $mailmembersplver = 'YaBB 2.6 $Revision: 1.0 $';
-if ($action eq 'detailedversion') { return 1; }
+if ( $action eq 'detailedversion' ) { return 1; }
 
 if ($iamguest) { &admin_fatal_error("no_access"); }
 
@@ -23,8 +30,8 @@ if ($iamguest) { &admin_fatal_error("no_access"); }
 $reused = 0;
 
 sub Mailing {
-      if ($iamguest) { &admin_fatal_error("no_access"); }
-      $yymain .= qq~
+    if ($iamguest) { &admin_fatal_error("no_access"); }
+    $yymain .= qq~
 <div style="padding: 0px; width: 99%; margin-left: 0px; margin-right: auto;">
       <table border="0" width="100%" cellspacing="1" cellpadding="3" class="bordercolor">
       <tr>
@@ -52,27 +59,27 @@ sub Mailing {
       <tr>
             <td align="left" width="100%">
       ~;
-      my $grpselect;
-      my $groupcnt = 0;
-      foreach (sort { $a cmp $b } keys %Group) {
-            unless($_ eq "Moderator") {
-                  ($title, $dummy) = split(/\|/, $Group{$_}, 2);
-                  $grpselect .= qq~\n<option value="$_"> $title</option>~;
-                  $groupcnt++;
-            }
-      }
-      foreach (@nopostorder) {
-            ($title, $dummy) = split(/\|/, $NoPost{$_}, 2);
+    my $grpselect;
+    my $groupcnt = 0;
+    foreach ( sort { $a cmp $b } keys %Group ) {
+        unless ( $_ eq "Moderator" ) {
+            ( $title, $dummy ) = split( /\|/, $Group{$_}, 2 );
             $grpselect .= qq~\n<option value="$_"> $title</option>~;
             $groupcnt++;
-      }
-      foreach (sort { $b <=> $a } keys %Post) {
-            ($title, $dummy) = split(/\|/, $Post{$_}, 2);
-            $grpselect .= qq~\n<option value="$title"> $title</option>~;
-            $groupcnt++;
-      }
-      if ($groupcnt > 12) { $groupcnt = 12; }
-      $yymain .= qq~
+        }
+    }
+    foreach (@nopostorder) {
+        ( $title, $dummy ) = split( /\|/, $NoPost{$_}, 2 );
+        $grpselect .= qq~\n<option value="$_"> $title</option>~;
+        $groupcnt++;
+    }
+    foreach ( sort { $b <=> $a } keys %Post ) {
+        ( $title, $dummy ) = split( /\|/, $Post{$_}, 2 );
+        $grpselect .= qq~\n<option value="$title"> $title</option>~;
+        $groupcnt++;
+    }
+    if ( $groupcnt > 12 ) { $groupcnt = 12; }
+    $yymain .= qq~
       <select name="field1" id="field1" size="$groupcnt" multiple="multiple" style="width: 100%; font-size: 11px;">
       $grpselect
       </select>
@@ -83,9 +90,9 @@ sub Mailing {
       </div>
       ~;
 
-      unless ($groupcnt == 0) {
+    unless ( $groupcnt == 0 ) {
 
-            $yymain .= qq~
+        $yymain .= qq~
       <div class="windowbg2" style="float: left; width: 50%; height: 260px; margin: 1%; border: 1px #cccccc solid;">
 
       <table border="0" width="98%" cellspacing="0" cellpadding="3" align="center" class="windowbg2">
@@ -137,16 +144,16 @@ sub Mailing {
       </td>
       </tr>~;
 
-            if (-e "$vardir/yabbaddress.csv") {
+        if ( -e "$vardir/yabbaddress.csv" ) {
             $yymain .= qq~
       <tr>
       <td class="windowbg2" align="center" valign="top">
             <input type="button" value="$amv_txt{'51'}" class="button" onclick="MailListWin('$adminurl?action=mailing3');" />
       </td>
       </tr>~;
-            }
+        }
 
-            $yymain .= qq~
+        $yymain .= qq~
       </table>
       </div>
 <script language="JavaScript1.2" type="text/javascript">
@@ -162,25 +169,26 @@ sub Mailing {
 
       <div class="windowbg2" style="float: left; width: 50%; height: 145px; margin: 1%; border: 1px #cccccc solid; overflow: auto;">
       ~;
-            if (-e ("$vardir/maillist.dat")) {
-                  fopen(FILE, "$vardir/maillist.dat");
-                  @maillist = <FILE>;
-                  fclose(FILE);
-                  $yymain .= qq~
+        if ( -e ("$vardir/maillist.dat") ) {
+            fopen( FILE, "$vardir/maillist.dat" );
+            @maillist = <FILE>;
+            fclose(FILE);
+            $yymain .= qq~
             <table border="0" width="99%" cellspacing="0" cellpadding="3" align="center" class="windowbg2">
             ~;
-                  foreach $curmail (@maillist) {
-                        chomp $curmail;
-                        ($otime, $osubject, $otext, $osender) = split(/\|/, $curmail);
-                        &LoadUser($osender);
-                        $thetime = &timeformat($otime);
+            foreach $curmail (@maillist) {
+                chomp $curmail;
+                ( $otime, $osubject, $otext, $osender ) =
+                  split( /\|/, $curmail );
+                &LoadUser($osender);
+                $thetime = &timeformat($otime);
 
-                        $jsubject = $osubject;
-                        $jtext = $otext;
-                        &ToJS($jsubject);
-                        &ToJS($jtext);
+                $jsubject = $osubject;
+                $jtext    = $otext;
+                &ToJS($jsubject);
+                &ToJS($jtext);
 
-                        $yymain .= qq~
+                $yymain .= qq~
                   <tr>
                         <td class="windowbg2" align="left" valign="middle">
                               <input type="radio" name="usemail" value="$otime" class="windowbg2" style="border: 0; vertical-align: middle;" onclick="showMail('$jsubject', '$jtext', '$otime');" />
@@ -190,12 +198,12 @@ sub Mailing {
                         <td class="windowbg2" align="left" valign="middle"><a href="$adminurl?action=deletemail;delmail=$otime"><img src="$imagesdir/admin_rem.gif" border="0" alt="del" /></a></td>
                   </tr>
                   ~;
-                  }
-                  $yymain .= qq~
-            </table>
-            ~;
             }
             $yymain .= qq~
+            </table>
+            ~;
+        }
+        $yymain .= qq~
       </div>
 
       <div class="windowbg2" style="float: left; width: 44%; margin: 1%; margin-top: 0; border: 0;">
@@ -233,98 +241,108 @@ function showMail(thesubject, thetext, thetime) {
 </script>
 </div>
       ~;
-      }
+    }
 
-      $yytitle = $admin_txt{'6'};
-      $action_area = 'mailing';
-      &AdminTemplate;
+    $yytitle     = $admin_txt{'6'};
+    $action_area = 'mailing';
+    &AdminTemplate;
 }
 
 sub Mailing2 {
-      if ($iamguest) { &fatal_error('no_access'); }
-      if (!$FORM{'mailsend'} && !$FORM{'convert'}) { &fatal_error('no_access'); }
-      @convlist = ();
-      if ($FORM{'mailsend'} && $FORM{'emailtext'} ne '') {
-            $FORM{'emailsubject'} =~ s~\|~&#124;~g;
-            $FORM{'emailtext'} =~ s~\|~&#124;~g;
-            $FORM{'emailtext'} =~ s~\r~~g;
-            $mailline = qq~$date|$FORM{'emailsubject'}|$FORM{'emailtext'}|$username~;
-            &MailList($mailline);
-      }
-      (@mailgroups) = split(/\, /, $FORM{'field1'});
-      &ManageMemberinfo("load");
-      $i = 0;
-      my ($emailsubject,$emailtext);
-      foreach my $user (keys %memberinf) {
-            ($memrealname, $mememail, $memposition, $memposts, $memaddgrp) = split(/\|/, $memberinf{$user} );
-            &FromHTML($memrealname);
+    if ($iamguest) { &fatal_error('no_access'); }
+    if ( !$FORM{'mailsend'} && !$FORM{'convert'} ) {
+        &fatal_error('no_access');
+    }
+    @convlist = ();
+    if ( $FORM{'mailsend'} && $FORM{'emailtext'} ne '' ) {
+        $FORM{'emailsubject'} =~ s~\|~&#124;~g;
+        $FORM{'emailtext'}    =~ s~\|~&#124;~g;
+        $FORM{'emailtext'}    =~ s~\r~~g;
+        $mailline =
+          qq~$date|$FORM{'emailsubject'}|$FORM{'emailtext'}|$username~;
+        &MailList($mailline);
+    }
+    (@mailgroups) = split( /\, /, $FORM{'field1'} );
+    &ManageMemberinfo("load");
+    $i = 0;
+    my ( $emailsubject, $emailtext );
+    foreach my $user ( keys %memberinf ) {
+        ( $memrealname, $mememail, $memposition, $memposts, $memaddgrp ) =
+          split( /\|/, $memberinf{$user} );
+        &FromHTML($memrealname);
 
-            if ($FORM{'mailsend'} && $FORM{'emailtext'} ne '') {
-                  $emailsubject = $FORM{'emailsubject'};
-                  $emailsubject =~ s~\[name\]~$memrealname~ig;
-                  $emailsubject =~ s~\[username\]~$user~ig;
-                  $emailtext = $FORM{'emailtext'};
-                  $emailtext =~ s~\[name\]~$memrealname~ig;
-                  $emailtext =~ s~\[username\]~$user~ig;
-            }
+        if ( $FORM{'mailsend'} && $FORM{'emailtext'} ne '' ) {
+            $emailsubject = $FORM{'emailsubject'};
+            $emailsubject =~ s~\[name\]~$memrealname~ig;
+            $emailsubject =~ s~\[username\]~$user~ig;
+            $emailtext = $FORM{'emailtext'};
+            $emailtext =~ s~\[name\]~$memrealname~ig;
+            $emailtext =~ s~\[username\]~$user~ig;
+        }
 
-            $mailit = 0;
-            foreach $element (@mailgroups) {
-                  chomp $element;
-                  if ($element eq $memposition) { $mailit = 1; }
-                  foreach $memberaddgroups (split(/, /, $memaddgrp)) {
-                        chomp $memberaddgroups;
-                        if ($element eq $memberaddgroups) { $mailit = 1; last; }
-                  }
-                  if ($mailit) { last; }
+        $mailit = 0;
+        foreach $element (@mailgroups) {
+            chomp $element;
+            if ( $element eq $memposition ) { $mailit = 1; }
+            foreach $memberaddgroups ( split( /, /, $memaddgrp ) ) {
+                chomp $memberaddgroups;
+                if ( $element eq $memberaddgroups ) { $mailit = 1; last; }
             }
-            if ($mailit && $FORM{'mailsend'}) {
-                  require "$sourcedir/Mailer.pl";
-                  &sendmail($mememail, $emailsubject, $emailtext);
-            } elsif ($mailit && $FORM{'convert'}) {
-                  if ($memrealname =~ /&#(\d{3,}?)\;/ig) { $memrealname = $user; }
-                  $convlist[$i] = qq~$memrealname\;$mememail\n~;
-                  $i++;
-            }
-      }
-      undef %memberinf;
-      if (@convlist) {
-            fopen(ADDRESSLIST, ">$vardir/yabbaddress.csv", 1);
-            print ADDRESSLIST "Name\;E-mail Address\n";
-            print ADDRESSLIST @convlist;
-            fclose(ADDRESSLIST);
-      } elsif ($FORM{'convert'}) {
-            unlink "$vardir/yabbaddress.csv"
-      }
+            if ($mailit) { last; }
+        }
+        if ( $mailit && $FORM{'mailsend'} ) {
+            require "$sourcedir/Mailer.pl";
+            &sendmail( $mememail, $emailsubject, $emailtext );
+        }
+        elsif ( $mailit && $FORM{'convert'} ) {
+            if ( $memrealname =~ /&#(\d{3,}?)\;/ig ) { $memrealname = $user; }
+            $convlist[$i] = qq~$memrealname\;$mememail\n~;
+            $i++;
+        }
+    }
+    undef %memberinf;
+    if (@convlist) {
+        fopen( ADDRESSLIST, ">$vardir/yabbaddress.csv", 1 );
+        print ADDRESSLIST "Name\;E-mail Address\n";
+        print ADDRESSLIST @convlist;
+        fclose(ADDRESSLIST);
+    }
+    elsif ( $FORM{'convert'} ) {
+        unlink "$vardir/yabbaddress.csv";
+    }
 
-      $yySetLocation = qq~$adminurl?action=mailing~;
-      &redirectexit;
+    $yySetLocation = qq~$adminurl?action=mailing~;
+    &redirectexit;
 }
 
 sub Mailing3 {
-      fopen(FILE, "$vardir/yabbaddress.csv");
-      @addlist = <FILE>;
-      fclose(FILE);
-      print qq~Content-disposition: inline; filename=yabbaddress.csv\n\n~;
-      foreach $curadd (@addlist) {
-            chomp $curadd;
-            print qq~$curadd\n~;
-      }
+    fopen( FILE, "$vardir/yabbaddress.csv" );
+    @addlist = <FILE>;
+    fclose(FILE);
+    print qq~Content-disposition: inline; filename=yabbaddress.csv\n\n~;
+    foreach $curadd (@addlist) {
+        chomp $curadd;
+        print qq~$curadd\n~;
+    }
 }
 
 sub MailingMembers {
-      $sortmode = "";
-      $selPos   = "";
-      $selUser  = "";
+    $sortmode = "";
+    $selPos   = "";
+    $selUser  = "";
 
-      if ($FORM{'sortform'} eq "position") { $selPos = qq~ selected="selected"~; }
-      else { $selUser = qq~ selected="selected"~; }
+    if ( $FORM{'sortform'} eq "position" ) {
+        $selPos = qq~ selected="selected"~;
+    }
+    else { $selUser = qq~ selected="selected"~; }
 
-      if    ($INFO{'sort'}     ne "") { $sortmode = ";sort=" . $INFO{'sort'}; }
-      elsif ($FORM{'sortform'} ne "") { $sortmode = ";sort=" . $FORM{'sortform'}; }
+    if ( $INFO{'sort'} ne "" ) { $sortmode = ";sort=" . $INFO{'sort'}; }
+    elsif ( $FORM{'sortform'} ne "" ) {
+        $sortmode = ";sort=" . $FORM{'sortform'};
+    }
 
-      if ($iamguest) { &admin_fatal_error("no_access"); }
-      $yymain .= qq~
+    if ($iamguest) { &admin_fatal_error("no_access"); }
+    $yymain .= qq~
 <div style="padding: 0px; width: 99%; margin-left: 0px; margin-right: auto;">
       <table border="0" width="100%" cellspacing="1" cellpadding="3" class="bordercolor">
       <tr>
@@ -356,135 +374,155 @@ sub MailingMembers {
       <table border="0" width="99%" cellspacing="0" cellpadding="3" class="windowbg">
       ~;
 
-      %TopMembers = ();
+    %TopMembers = ();
 
-      &ManageMemberinfo("load");
-      while (($membername, $value) = each(%memberinf)) {
-            ($memberrealname, undef, $memposition, $memposts) = split(/\|/, $value);
-            $pstsort    = 99999999 - $memposts;
-            $sortgroups = "";
-            $j          = 0;
+    &ManageMemberinfo("load");
+    while ( ( $membername, $value ) = each(%memberinf) ) {
+        ( $memberrealname, undef, $memposition, $memposts ) =
+          split( /\|/, $value );
+        $pstsort    = 99999999 - $memposts;
+        $sortgroups = "";
+        $j          = 0;
 
-            if ($membername eq $username) {
-                  $sortgroups = "!!!";
-            } else {
-                  if ($FORM{'sortform'} eq "position" || $INFO{'sort'} eq "position") {
-                        foreach my $key (keys %Group) {
-                              if ($memposition eq $key) {
-                                    if    ($key eq "Administrator")    { $sortgroups = "aaa.$pstsort.$memberrealname"; }
-                                    elsif ($key eq "Global Moderator") { $sortgroups = "bbb.$pstsort.$memberrealname"; }
-                              }
+        if ( $membername eq $username ) {
+            $sortgroups = "!!!";
+        }
+        else {
+            if (   $FORM{'sortform'} eq "position"
+                || $INFO{'sort'} eq "position" )
+            {
+                foreach my $key ( keys %Group ) {
+                    if ( $memposition eq $key ) {
+                        if ( $key eq "Administrator" ) {
+                            $sortgroups = "aaa.$pstsort.$memberrealname";
                         }
-                        if (!$sortgroups) {
-                              foreach (sort { $a <=> $b } keys %NoPost) {
-                                    if ($memposition eq $_) {
-                                          $sortgroups = "ddd.$memposition.$pstsort.$memberrealname";
-                                    }
-                              }
+                        elsif ( $key eq "Global Moderator" ) {
+                            $sortgroups = "bbb.$pstsort.$memberrealname";
                         }
-                        if (!$sortgroups) {
-                              $sortgroups = "eee.$pstsort.$memposition.$memberrealname";
+                    }
+                }
+                if ( !$sortgroups ) {
+                    foreach ( sort { $a <=> $b } keys %NoPost ) {
+                        if ( $memposition eq $_ ) {
+                            $sortgroups =
+                              "ddd.$memposition.$pstsort.$memberrealname";
                         }
+                    }
+                }
+                if ( !$sortgroups ) {
+                    $sortgroups = "eee.$pstsort.$memposition.$memberrealname";
+                }
 
-                  } else {
-                        $sortgroups = $memberrealname;
-                  }
             }
-            $TopMembers{$membername} = $sortgroups;
-      }
-      my @toplist = sort { lc $TopMembers{$a} cmp lc $TopMembers{$b} } keys %TopMembers;
+            else {
+                $sortgroups = $memberrealname;
+            }
+        }
+        $TopMembers{$membername} = $sortgroups;
+    }
+    my @toplist =
+      sort { lc $TopMembers{$a} cmp lc $TopMembers{$b} } keys %TopMembers;
 
-      $memcount = @toplist;
+    $memcount = @toplist;
 
-      $b         = 0;
-      $numshown  = 0;
-      $actualnum = 0;
+    $b         = 0;
+    $numshown  = 0;
+    $actualnum = 0;
 
-      while (($numshown < $memcount)) {
-            $user = $toplist[$b];
+    while ( ( $numshown < $memcount ) ) {
+        $user = $toplist[$b];
 
-            ($memrealname, $mememail, $memposition, $memposts) = split(/\|/, $memberinf{$user});
+        ( $memrealname, $mememail, $memposition, $memposts ) =
+          split( /\|/, $memberinf{$user} );
 
-            if ($user eq $username) { $bagcolor = "windowbg2"; }
-            else { $bagcolor = "windowbg"; }
-            if ($memrealname ne "") {
+        if   ( $user eq $username ) { $bagcolor = "windowbg2"; }
+        else                        { $bagcolor = "windowbg"; }
+        if ( $memrealname ne "" ) {
 
-                  $addel = qq~<input type="checkbox" name="member$actualnum" value="$user" class="windowbg" style="border: 0;" />~;
-                  $actualnum++;
+            $addel =
+qq~<input type="checkbox" name="member$actualnum" value="$user" class="windowbg" style="border: 0;" />~;
+            $actualnum++;
 
-                  my $memberinfo = "$memposition";
-                  if ($memberinfo eq "Administrator") {
-                        ($memberinfo, undef) = split(/\|/, $Group{"Administrator"}, 2);
-                  } elsif ($memberinfo eq "Global Moderator") {
-                        ($memberinfo, undef) = split(/\|/, $Group{"Global Moderator"}, 2);
-                  } else {
-                        foreach my $key (sort { $a <=> $b } keys %NoPost) {
-                              if ($key eq $memberinfo) {
-                                    ($memberinfo, undef) = split(/\|/, $NoPost{$key}, 2);
-                              }
-                        }
-                  }
+            my $memberinfo = "$memposition";
+            if ( $memberinfo eq "Administrator" ) {
+                ( $memberinfo, undef ) =
+                  split( /\|/, $Group{"Administrator"}, 2 );
+            }
+            elsif ( $memberinfo eq "Global Moderator" ) {
+                ( $memberinfo, undef ) =
+                  split( /\|/, $Group{"Global Moderator"}, 2 );
+            }
+            else {
+                foreach my $key ( sort { $a <=> $b } keys %NoPost ) {
+                    if ( $key eq $memberinfo ) {
+                        ( $memberinfo, undef ) =
+                          split( /\|/, $NoPost{$key}, 2 );
+                    }
+                }
+            }
 
-                  $viewmembinfo = $memberinfo;
-                  &ToJS($memberinfo);
-                  $tmp_postcount = $memposts;
-                  $checkinfo     = $memberinfo;
-                  $checkinfo =~ s/\, /\'\|\'/g;
-                  $CheckingAll .= qq~"'$checkinfo'", ~;
+            $viewmembinfo = $memberinfo;
+            &ToJS($memberinfo);
+            $tmp_postcount = $memposts;
+            $checkinfo     = $memberinfo;
+            $checkinfo =~ s/\, /\'\|\'/g;
+            $CheckingAll .= qq~"'$checkinfo'", ~;
 
-                  if ($do_scramble_id) { $cloakusername = &cloak($user); } else { $cloakusername = $user; }
-                  $linkuser = qq~<a href="$scripturl?action=viewprofile;username=$cloakusername"><b>$memrealname</b></a>~;
+            if   ($do_scramble_id) { $cloakusername = &cloak($user); }
+            else                   { $cloakusername = $user; }
+            $linkuser =
+qq~<a href="$scripturl?action=viewprofile;username=$cloakusername"><b>$memrealname</b></a>~;
 
-                  $yymain .= qq~
+            $yymain .= qq~
                   <tr>
                   <td class="$bagcolor" align="center" valign="middle">$addel</td>
                   <td class="$bagcolor" align="left" valign="middle">$linkuser - $viewmembinfo</td>
                   </tr>~;
-            }
+        }
 
-            $numshown++;
-            $b++;
-      }
-      undef @toplist;
-      undef %memberinf;
+        $numshown++;
+        $b++;
+    }
+    undef @toplist;
+    undef %memberinf;
 
-      $yymain .= qq~
+    $yymain .= qq~
       </table>
       </div>
       ~;
 
-      unless ($memcount == 0) {
-            if ($FORM{'sortform'} eq "") { $FORM{'sortform'} = $INFO{'sort'}; }
-            if (!$FORM{'reversed'}) { $FORM{'reversed'} = $INFO{'reversed'}; }
+    unless ( $memcount == 0 ) {
+        if ( $FORM{'sortform'} eq "" ) { $FORM{'sortform'} = $INFO{'sort'}; }
+        if ( !$FORM{'reversed'} ) { $FORM{'reversed'} = $INFO{'reversed'}; }
 
-            @groupinfo = ();
-            $i         = 0;
-            $z         = 0;
+        @groupinfo = ();
+        $i         = 0;
+        $z         = 0;
 
-            ($title, $dummy) = split(/\|/, $Group{"Administrator"}, 2);
+        ( $title, $dummy ) = split( /\|/, $Group{"Administrator"}, 2 );
+        &ToJS($title);
+        $groupinfo[$i] = $title;
+        $i++;
+        $grp_data = qq~"'$title'", ~;
+        ( $title, $dummy ) = split( /\|/, $Group{"Global Moderator"}, 2 );
+        &ToJS($title);
+        $groupinfo[$i] = $title;
+        $i++;
+        $grp_data .= qq~"'$title'", ~;
+
+        foreach (@nopostorder) {
+            ( $title, $dummy ) = split( /\|/, $NoPost{$_}, 2 );
             &ToJS($title);
             $groupinfo[$i] = $title;
-            $i++;
-            $grp_data = qq~"'$title'", ~;
-            ($title, $dummy) = split(/\|/, $Group{"Global Moderator"}, 2);
-            &ToJS($title);
-            $groupinfo[$i] = $title;
-            $i++;
             $grp_data .= qq~"'$title'", ~;
+            $i++;
+            $z++;
+        }
 
-            foreach (@nopostorder) {
-                  ($title, $dummy) = split(/\|/, $NoPost{$_}, 2);
-                  &ToJS($title);
-                  $groupinfo[$i] = $title;
-                  $grp_data .= qq~"'$title'", ~;
-                  $i++;
-                  $z++;
-            }
+        $groupcnt = $i;
+        $grp_data .= qq~""~;
 
-            $groupcnt = $i;
-            $grp_data .= qq~""~;
-
-            $yymain .= qq~
+        $yymain .= qq~
       <div class="windowbg2" style="float: left; width: 50%; height: 260px; margin: 1%; padding: 4px; border: 1px #cccccc solid;">
 
       <table border="0" width="100%" cellspacing="0" cellpadding="2" class="windowbg2">
@@ -519,14 +557,14 @@ sub MailingMembers {
             <label for="field1"><span class="small">$amv_txt{'46'}</span></label><br />
             <select name="field1" id="field1" size="$groupcnt" multiple="multiple" onchange="selectCheck()">~;
 
-            $i = 0;
-            while ($i < $groupcnt) {
-                  $yymain .= qq~
-                  <option value="$i">$groupinfo[$i]</option>~;
-                  $i++;
-            }
-
+        $i = 0;
+        while ( $i < $groupcnt ) {
             $yymain .= qq~
+                  <option value="$i">$groupinfo[$i]</option>~;
+            $i++;
+        }
+
+        $yymain .= qq~
             </select>
       </td>
       </tr>
@@ -543,25 +581,26 @@ sub MailingMembers {
 
       <div class="windowbg2" style="float: left; width: 50%; height: 115px; margin: 1%; border: 1px #cccccc solid; overflow: auto;">
       ~;
-            if (-e ("$vardir/maillist.dat")) {
-                  fopen(FILE, "$vardir/maillist.dat");
-                  @maillist = <FILE>;
-                  fclose(FILE);
-                  $yymain .= qq~
+        if ( -e ("$vardir/maillist.dat") ) {
+            fopen( FILE, "$vardir/maillist.dat" );
+            @maillist = <FILE>;
+            fclose(FILE);
+            $yymain .= qq~
             <table border="0" width="99%" cellspacing="0" cellpadding="3" class="windowbg2">
             ~;
-                  foreach $curmail (@maillist) {
-                        chomp $curmail;
-                        ($otime, $osubject, $otext, $osender) = split(/\|/, $curmail);
-                        &LoadUser($osender);
-                        $thetime = &timeformat($otime);
+            foreach $curmail (@maillist) {
+                chomp $curmail;
+                ( $otime, $osubject, $otext, $osender ) =
+                  split( /\|/, $curmail );
+                &LoadUser($osender);
+                $thetime = &timeformat($otime);
 
-                        $jsubject = $osubject;
-                        $jtext    = $otext;
-                        &ToJS($jsubject);
-                        &ToJS($jtext);
+                $jsubject = $osubject;
+                $jtext    = $otext;
+                &ToJS($jsubject);
+                &ToJS($jtext);
 
-                        $yymain .= qq~
+                $yymain .= qq~
                   <tr>
                         <td class="windowbg2" align="left" valign="middle">
                               <input type="radio" name="usemail" value="$otime" class="windowbg2" style="border: 0; vertical-align: middle;" onclick="showMailmemb('$jsubject', '$jtext', '$otime');" />
@@ -571,12 +610,12 @@ sub MailingMembers {
                         <td class="windowbg2" align="left" valign="middle"><a href="$adminurl?action=deletemail;delmail=$otime"><img src="$imagesdir/admin_rem.gif" border="0" alt="del" /></a></td>
                   </tr>
                   ~;
-                  }
-                  $yymain .= qq~
-            </table>
-            ~;
             }
             $yymain .= qq~
+            </table>
+            ~;
+        }
+        $yymain .= qq~
       </div>
 
 
@@ -665,30 +704,30 @@ function showMailmemb(thesubject, thetext, thetime) {
 </script>
 </div>
       ~;
-      }
+    }
 
-      $yytitle     = "$admin_txt{'6'}";
-      $action_area = "mailing";
-      &AdminTemplate;
+    $yytitle     = "$admin_txt{'6'}";
+    $action_area = "mailing";
+    &AdminTemplate;
 }
 
 sub ToJS {
-      $_[0] =~ s~;~&#059;~g;
-      $_[0] =~ s~\!~&#33;~g;
-      $_[0] =~ s~\(~&#40;~g;
-      $_[0] =~ s~\)~&#41;~g;
-      $_[0] =~ s~\-~&#45;~g;
-      $_[0] =~ s~\.~&#46;~g;
-      $_[0] =~ s~\:~&#58;~g;
-      $_[0] =~ s~\?~&#63;~g;
-      $_[0] =~ s~\[~&#91;~g;
-      $_[0] =~ s~\\~&#92;&#92;~g;
-      $_[0] =~ s~\]~&#93;~g;
-      $_[0] =~ s~\^~&#94;~g;
-      $_[0] =~ s~\"~&#34;~g;
-      $_[0] =~ s~\'~&#96;~g;
-      $_[0] =~ s~\<~&#60;~g;
-      $_[0] =~ s~\>~&#62;~g;
+    $_[0] =~ s~;~&#059;~g;
+    $_[0] =~ s~\!~&#33;~g;
+    $_[0] =~ s~\(~&#40;~g;
+    $_[0] =~ s~\)~&#41;~g;
+    $_[0] =~ s~\-~&#45;~g;
+    $_[0] =~ s~\.~&#46;~g;
+    $_[0] =~ s~\:~&#58;~g;
+    $_[0] =~ s~\?~&#63;~g;
+    $_[0] =~ s~\[~&#91;~g;
+    $_[0] =~ s~\\~&#92;&#92;~g;
+    $_[0] =~ s~\]~&#93;~g;
+    $_[0] =~ s~\^~&#94;~g;
+    $_[0] =~ s~\"~&#34;~g;
+    $_[0] =~ s~\'~&#96;~g;
+    $_[0] =~ s~\<~&#60;~g;
+    $_[0] =~ s~\>~&#62;~g;
 }
 
 1;

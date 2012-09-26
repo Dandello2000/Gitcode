@@ -1,5 +1,6 @@
 ###############################################################################
 # NewSettings.pl                                                              #
+# $Date: 9/20/2012 $                                                          #
 ###############################################################################
 # YaBB: Yet another Bulletin Board                                            #
 # Open-Source Community Software for Webmasters                               #
@@ -11,36 +12,57 @@
 # Software by:  The YaBB Development Team                                     #
 #               with assistance from the YaBB community.                      #
 ###############################################################################
+# use strict;
+# use warnings;
+no warnings qw(uninitialized once redefine);
+use CGI::Carp qw(fatalsToBrowser);
+use English '-no_match_vars';
+our $VERSION = 1.0;
 
 $newsettingsplver = 'YaBB 2.6 $Revision: 1.0 $';
-if ($action eq 'detailedversion') { return 1; }
+if ( $action eq 'detailedversion' ) { return 1; }
 
 # Figure out what tabset to use, depending on the page= parameter.
 my %settings_dispatch = (
-      news => "$admindir/Settings_News.pl",
-      main => "$admindir/Settings_Main.pl",
-      advanced => "$admindir/Settings_Advanced.pl",
-      security => "$admindir/Settings_Security.pl",
-      antispam => "$admindir/Settings_Antispam.pl",
-      maintenance => "$admindir/Settings_Maintenance.pl",
+    news        => "$admindir/Settings_News.pl",
+    main        => "$admindir/Settings_Main.pl",
+    advanced    => "$admindir/Settings_Advanced.pl",
+    security    => "$admindir/Settings_Security.pl",
+    antispam    => "$admindir/Settings_Antispam.pl",
+    maintenance => "$admindir/Settings_Maintenance.pl",
 
-      ### BOARDMOD SETTINGS ANCHOR ###
-      ### ADD BEFORE THESE LINES   ###
+    ### BOARDMOD SETTINGS ANCHOR ###
+    ### ADD BEFORE THESE LINES   ###
 );
 
 my $page = $INFO{'page'};
+
 # 'eval' because NewSettings.pl can be called by Sources/TabMenu.pl
-eval{ require $settings_dispatch{$page}; };
+eval { require $settings_dispatch{$page}; };
 
 sub settings {
-      &is_admin_or_gmod;
+    &is_admin_or_gmod;
 
-      $yytitle = $page eq 'main' ? $admin_txt{'222'} : ($page eq 'advanced' ? $admin_txt{'223'} : ($page eq 'security' ? $admintxt{'a3_title'} : ($page eq 'antispam' ? $admintxt{'a3_sub4'} : ($page eq 'maintenance' ? $admintxt{'a7_title'} : $admintxt{'a2_sub1'}))));
+    $yytitle =
+      $page eq 'main' ? $admin_txt{'222'}
+      : (
+        $page eq 'advanced' ? $admin_txt{'223'}
+        : (
+            $page eq 'security' ? $admintxt{'a3_title'}
+            : (
+                $page eq 'antispam' ? $admintxt{'a3_sub4'}
+                : (
+                      $page eq 'maintenance' ? $admintxt{'a7_title'}
+                    : $admintxt{'a2_sub1'}
+                )
+            )
+        )
+      );
 
-      my @requireorder; # an array for the correct order of the requirements
-      my %requirements; # an hash that says "Y is required by X"
+    my @requireorder;    # an array for the correct order of the requirements
+    my %requirements;    # an hash that says "Y is required by X"
 
-      $yymain .= qq~
+    $yymain .= qq~
    <a name="top"></a>
    <div class="bordercolor" style="padding: 0px; width: 99%; margin-left: 0px; margin-right: auto;">
    <table width="100%" cellspacing="1" cellpadding="4">
@@ -60,17 +82,19 @@ sub settings {
   <form action="$adminurl?action=newsettings2;page=$page" onsubmit="undisableAll(this);" method="post">
   <ul id="navlist">
 ~;
-      my $i = 0;
-      foreach my $tab (@settings) {
-            $tab->{'name'} =~ s/ /&nbsp;/g;
-            # The &nbsp;'s are for Konqueror, and also to add a little more padding.
-            $yymain .= qq~    <li id="button_$tab->{'id'}" onclick="changeToTab('$tab->{'id'}'); return false;">&nbsp;<a href="#tab_$tab->{'id'}">$tab->{'name'}</a>&nbsp;</li>
-~;
-      }
-      $yymain .= q~  </ul>~;
+    my $i = 0;
+    foreach my $tab (@settings) {
+        $tab->{'name'} =~ s/ /&nbsp;/g;
 
-      foreach my $tab (@settings) {
-            $yymain .= qq~
+        # The &nbsp;'s are for Konqueror, and also to add a little more padding.
+        $yymain .=
+qq~    <li id="button_$tab->{'id'}" onclick="changeToTab('$tab->{'id'}'); return false;">&nbsp;<a href="#tab_$tab->{'id'}">$tab->{'name'}</a>&nbsp;</li>
+~;
+    }
+    $yymain .= q~  </ul>~;
+
+    foreach my $tab (@settings) {
+        $yymain .= qq~
   <div class="bordercolor" style="padding: 0px; width: 99%; margin-left: 0px; margin-right: auto;">
     <table width="100%" cellspacing="1" cellpadding="4" class="section" id="tab_$tab->{'id'}">
      <tr>
@@ -80,17 +104,17 @@ sub settings {
        </td>
      </tr>~;
 
-            foreach my $item (@{$tab->{'items'}}) {
-                  if($item->{'header'}) {
-                        $yymain .= qq~
+        foreach my $item ( @{ $tab->{'items'} } ) {
+            if ( $item->{'header'} ) {
+                $yymain .= qq~
      <tr>
        <td style="text-align: left;" class="catbg" colspan="2">
          <span class="small">$item->{'header'}</span>
        </td>
      </tr>~;
-                  }
-                  elsif($item->{'two_rows'} && $item->{'input_html'}) {
-                        $yymain .= qq~
+            }
+            elsif ( $item->{'two_rows'} && $item->{'input_html'} ) {
+                $yymain .= qq~
      <tr style="text-align: left;">
        <td style="width: 50%;" class="windowbg2" colspan="2">
          $item->{'description'}
@@ -101,9 +125,9 @@ sub settings {
          $item->{'input_html'}
        </td>
      </tr>~;
-                  }
-                  elsif($item->{'input_html'}) {
-                        $yymain .= qq~
+            }
+            elsif ( $item->{'input_html'} ) {
+                $yymain .= qq~
      <tr style="text-align: left;">
        <td style="width: 50%;" class="windowbg2" valign="top">
          $item->{'description'}
@@ -112,75 +136,90 @@ sub settings {
          $item->{'input_html'}
        </td>
      </tr>~;
-                  }
-
-                  # Handle settings that require other settings
-                  if ($item->{'depends_on'} && $item->{'name'}) {
-                        foreach my $require (@{$item->{'depends_on'}}) {
-                              # This is somewhat messy, but it works well.
-                              # We strip off the possible options: inverse, equal, and not equal
-                              # Then we attach those to this current option in the detailed string for requirements
-                              # While this data does not really belong with the value, it transfers nicely.
-                              # We then remove it and reuse it later.
-                              my($inverse, $realname, $remainder) = $require =~ m/(\(?\!?)(\w+)(.*)/;
-                              push(@requireorder, $realname) unless $requirements{$realname};
-                              push(@{$requirements{$realname}}, $inverse . $item->{'name'} . $remainder);
-                        }
-                  }
             }
 
-            $yymain .= qq~
+            # Handle settings that require other settings
+            if ( $item->{'depends_on'} && $item->{'name'} ) {
+                foreach my $require ( @{ $item->{'depends_on'} } ) {
+
+# This is somewhat messy, but it works well.
+# We strip off the possible options: inverse, equal, and not equal
+# Then we attach those to this current option in the detailed string for requirements
+# While this data does not really belong with the value, it transfers nicely.
+# We then remove it and reuse it later.
+                    my ( $inverse, $realname, $remainder ) =
+                      $require =~ m/(\(?\!?)(\w+)(.*)/;
+                    push( @requireorder, $realname )
+                      unless $requirements{$realname};
+                    push(
+                        @{ $requirements{$realname} },
+                        $inverse . $item->{'name'} . $remainder
+                    );
+                }
+            }
+        }
+
+        $yymain .= qq~
    </table>
   </div>~;
-      }
+    }
 
-      # The old method isn't quite good enough.
-      # So we build a hash with the Javascript logic needed to determine if this item should be enabled.
-      # When in doubt, generate some code :)
-      my %requirejs;
+# The old method isn't quite good enough.
+# So we build a hash with the Javascript logic needed to determine if this item should be enabled.
+# When in doubt, generate some code :)
+    my %requirejs;
 
-      my $dependicies = '';
-      my $onloadevents;
-      foreach my $ritem (@requireorder) {
-            $dependicies .= qq~
+    my $dependicies = '';
+    my $onloadevents;
+    foreach my $ritem (@requireorder) {
+        $dependicies .= qq~
       function handleDependent_$ritem() {
             var isChecked = document.getElementsByName("$ritem")[0].checked;
             var itemValue = document.getElementsByName("$ritem")[0].value;\n~;
 
-            foreach my $require (@{$requirements{$ritem}}) {
-                  # && or ||, ( and )
-                  my $AndOr = $require =~ s/\)// ? ')' : '';
-                  $AndOr   .= $require =~ s/\|\|// ? ' ||' : ' &&';
-                  my $C     = $require =~ s/\(// ? '(' : '';
-                  # Is false
-                  if ($require =~ s/^\!//) {
-                        $requirejs{$require} .= qq~$C\!document.getElementsByName("$ritem")[0].checked$AndOr ~;
-                  }
-                  # Is equal to
-                  elsif ($require =~ s/\=\=(.*)$//) {
-                        $requirejs{$require} .= qq~$C\document.getElementsByName("$ritem")[0].value == '$1'$AndOr ~;
-                  }
-                  # Is not equal to
-                  elsif ($require =~ s/\!\=(.*)$//) {
-                        $requirejs{$require} .= qq~$C\document.getElementsByName("$ritem")[0].value != '$1'$AndOr ~;
-                  }
-                  # Is true
-                  else {
-                        $requirejs{$require} .= qq~$C\document.getElementsByName("$ritem")[0].checked$AndOr ~;
-                  }
-                  $dependicies .= qq~           checkDependent("$require");\n~;
+        foreach my $require ( @{ $requirements{$ritem} } ) {
+
+            # && or ||, ( and )
+            my $AndOr = $require =~ s/\)// ? ')' : '';
+            $AndOr .= $require =~ s/\|\|// ? ' ||' : ' &&';
+            my $C = $require =~ s/\(// ? '(' : '';
+
+            # Is false
+            if ( $require =~ s/^\!// ) {
+                $requirejs{$require} .=
+qq~$C\!document.getElementsByName("$ritem")[0].checked$AndOr ~;
             }
-            $dependicies .= qq~     };
+
+            # Is equal to
+            elsif ( $require =~ s/\=\=(.*)$// ) {
+                $requirejs{$require} .=
+qq~$C\document.getElementsByName("$ritem")[0].value == '$1'$AndOr ~;
+            }
+
+            # Is not equal to
+            elsif ( $require =~ s/\!\=(.*)$// ) {
+                $requirejs{$require} .=
+qq~$C\document.getElementsByName("$ritem")[0].value != '$1'$AndOr ~;
+            }
+
+            # Is true
+            else {
+                $requirejs{$require} .=
+                  qq~$C\document.getElementsByName("$ritem")[0].checked$AndOr ~;
+            }
+            $dependicies .= qq~           checkDependent("$require");\n~;
+        }
+        $dependicies .= qq~     };
       document.getElementsByName("$ritem")[0].onclick = handleDependent_$ritem;
       document.getElementsByName("$ritem")[0].onkeyup = handleDependent_$ritem;
 ~;
-            $onloadevents .= qq~handleDependent_$ritem(); ~;
-      }
+        $onloadevents .= qq~handleDependent_$ritem(); ~;
+    }
 
-      # Hidden "feature": jump directly to a tab by default via the URL bar.
-      $INFO{'tab'} =~ s/\W//g;
-      $default_tab = $INFO{'tab'} || $settings[0]->{'id'};
-      $yymain .= qq~
+    # Hidden "feature": jump directly to a tab by default via the URL bar.
+    $INFO{'tab'} =~ s/\W//g;
+    $default_tab = $INFO{'tab'} || $settings[0]->{'id'};
+    $yymain .= qq~
   <div class="bordercolor" style="padding: 0px; width: 99%; margin-top: 1em; margin-left: 0px; margin-right: auto;">
    <table width="100%" cellspacing="1" cellpadding="4">
      <tr valign="middle">
@@ -241,19 +280,19 @@ sub settings {
       function checkDependent(eid) {
             var elm = document.getElementsByName(eid)[0];\n~;
 
-            # Loop through each item that depends on something else
-            foreach my $name (keys(%requirejs)) {
-                  my $logic = $requirejs{$name};
-                  $logic    =~ s/ (&&|\|\|) $//;
-                  $yymain .= qq~
+    # Loop through each item that depends on something else
+    foreach my $name ( keys(%requirejs) ) {
+        my $logic = $requirejs{$name};
+        $logic =~ s/ (&&|\|\|) $//;
+        $yymain .= qq~
             if (eid == "$name" && ($logic)) {
                   elm.disabled = false;
             } else if (eid == "$name") {
                   elm.disabled = true;
             }\n~;
-            }
+    }
 
-      $yymain.= qq~
+    $yymain .= qq~
       }
 $dependicies
       window.onload = function(){ $onloadevents};
@@ -274,236 +313,305 @@ $dependicies
   // -->
   </script>~;
 
-      $action_area = "newsettings;page=$page";
-      &AdminTemplate;
+    $action_area = "newsettings;page=$page";
+    &AdminTemplate;
 }
 
 sub ischecked {
-      # Return a ref so we can be used like ${ischecked($var)} inside a string
-      return \' checked="checked"' if $_[0];
-      return \'';
+
+    # Return a ref so we can be used like ${ischecked($var)} inside a string
+    return \' checked="checked"' if $_[0];
+    return \'';
 }
 
 sub isselected {
-      # Return a ref so we can be used like ${isselected($var)} inside a string
-      return \' selected="selected"' if $_[0];
-      return \'';
+
+    # Return a ref so we can be used like ${isselected($var)} inside a string
+    return \' selected="selected"' if $_[0];
+    return \'';
 }
 
 # Regexes. Will be used like this: $var =~ /^(?:$regexes{'a'}|$regexes{'b'}|$regexes{'c'})$/ || die;
 my %regexes = (
-boolean     => '.*', # anything. True is not 0 and defined, false is 0/undefined
-number      => '\d+', # just numbers
-fullnumber  => '(?:\+|\-|)[\d\.]+', # optional sign, plus numbers and decimal
-hexadecimal => '#?[0-9a-fA-F]+', # optional "#" (for hex color codes), plus hex characters
-alpha       => '[a-zA-Z]+', # Letters
-text        => '[^\n\r]+', # Anything but newlines
-fulltext    => '(?s).+', # Anything, including newlines
-null        => '', # Use this if something can be false, in addition to the normal valid characters (not needed for boolean)
+    boolean => '.*', # anything. True is not 0 and defined, false is 0/undefined
+    number     => '\d+',               # just numbers
+    fullnumber => '(?:\+|\-|)[\d\.]+', # optional sign, plus numbers and decimal
+    hexadecimal => '#?[0-9a-fA-F]+'
+    ,    # optional "#" (for hex color codes), plus hex characters
+    alpha    => '[a-zA-Z]+',    # Letters
+    text     => '[^\n\r]+',     # Anything but newlines
+    fulltext => '(?s).+',       # Anything, including newlines
+    null     => ''
+    , # Use this if something can be false, in addition to the normal valid characters (not needed for boolean)
 );
 
 # Preserve the traditional "2" name as well as the nicer SaveSettings.
 sub settings2 {
-      &is_admin_or_gmod;
+    &is_admin_or_gmod;
 
-      # Load/Verify the settings
-      foreach my $tab (@settings) {
-            foreach my $item (@{$tab->{'items'}}) {
-                  # Get the value
-                  my $name = $item->{'name'} || next; # Skip non-items
-                  $settings{$name} = $FORM{$name};
-                  $settings{$name} = '' unless defined $settings{$name};
+    # Load/Verify the settings
+    foreach my $tab (@settings) {
+        foreach my $item ( @{ $tab->{'items'} } ) {
 
-                  $settings{$name} =~ s/^\s+//;
-                  $settings{$name} =~ s/\s+$//;
+            # Get the value
+            my $name = $item->{'name'} || next;    # Skip non-items
+            $settings{$name} = $FORM{$name};
+            $settings{$name} = '' unless defined $settings{$name};
 
-                  # Validate it
-                  if ($item->{'validate'}) {
-                        # Handle numbers/nulls better (empty string is 0)
-                        if ($item->{'validate'} =~ /null/ && $item->{'validate'} =~ /number/) {
-                              $settings{$name} ||= 0;
-                        }
+            $settings{$name} =~ s/^\s+//;
+            $settings{$name} =~ s/\s+$//;
 
-                        # Handle text/nulls better (empty string is empty string :)
-                        if ($item->{'validate'} =~ /null/ && $item->{'validate'} =~ /text/) {
-                              $settings{$name} ||= '';
-                        }
+            # Validate it
+            if ( $item->{'validate'} ) {
 
-                        # Piece together the patterns. It only needs to validate 1 pattern, but the pattern must be the whole string.
-                        my $pattern = '^(?:' . join('|', @regexes{split(/,/, $item->{'validate'})}) . ')$';
-                        &admin_fatal_error('invalid_value', qq~$name ($item->{'description'})~) unless $settings{$name} =~ /$pattern/;
+                # Handle numbers/nulls better (empty string is 0)
+                if (   $item->{'validate'} =~ /null/
+                    && $item->{'validate'} =~ /number/ )
+                {
+                    $settings{$name} ||= 0;
+                }
 
-                        # Set numeric options to 0 if they are null
-                        if ($item->{'validate'} eq 'boolean') {
-                              $settings{$name} = $settings{$name} ? 1 : 0;
-                        }
-                  }
+                # Handle text/nulls better (empty string is empty string :)
+                if (   $item->{'validate'} =~ /null/
+                    && $item->{'validate'} =~ /text/ )
+                {
+                    $settings{$name} ||= '';
+                }
+
+# Piece together the patterns. It only needs to validate 1 pattern, but the pattern must be the whole string.
+                my $pattern = '^(?:'
+                  . join( '|', @regexes{ split( /,/, $item->{'validate'} ) } )
+                  . ')$';
+                &admin_fatal_error( 'invalid_value',
+                    qq~$name ($item->{'description'})~ )
+                  unless $settings{$name} =~ /$pattern/;
+
+                # Set numeric options to 0 if they are null
+                if ( $item->{'validate'} eq 'boolean' ) {
+                    $settings{$name} = $settings{$name} ? 1 : 0;
+                }
             }
-      }
+        }
+    }
 
-      # Save them, as according to this type of settings
-      # This subroutine resides in the file that is loaded in the hash at the top of the file.
-      &SaveSettings(%settings);
+# Save them, as according to this type of settings
+# This subroutine resides in the file that is loaded in the hash at the top of the file.
+    &SaveSettings(%settings);
 
-      # Redirect.
-      $yySetLocation = "$adminurl?action=newsettings;page=$page";
-      &redirectexit;
+    # Redirect.
+    $yySetLocation = "$adminurl?action=newsettings;page=$page";
+    &redirectexit;
 }
 
 # Subroutine for saving to Settings.pl
 sub SaveSettingsTo {
-      my $file     = shift;
-      my %settings = @_;
+    my $file     = shift;
+    my %settings = @_;
 
-      # This is why we should use hashes for options to begin with.
-      foreach my $key (keys(%settings)) {
-            $$key = delete($settings{$key});
-            # Sanitize the input using \Q...\E later.
-      }
+    # This is why we should use hashes for options to begin with.
+    foreach my $key ( keys(%settings) ) {
+        $$key = delete( $settings{$key} );
 
-      if ($codemaxchars > 15) { $codemaxchars = 15; }
+        # Sanitize the input using \Q...\E later.
+    }
 
-      my $setfile;
-      if ($file eq 'Settings.pl') {
-            if ($settings_file_version ne $YaBBversion) { # START upgrade codes
-                  # The following is for upgrades from YaBB versions < 2.3 START
-                  if ($enable_notifications eq '') { $enable_notifications = $enable_notification ? 3 : 0; }
-                  $fix_avatar_img_size ||= 0;
-                  $fix_post_img_size ||= 0;
-                  $fix_signat_img_size ||= 0;
-                  $fix_attach_img_size ||= 0;
-                  # The following is for upgrades from YaBB versions < 2.3 END
+    if ( $codemaxchars > 15 ) { $codemaxchars = 15; }
 
-                  # The following is for upgrades from YaBB versions < 2.4 START
-                  if (-e "$vardir/membergroups.txt") { require "$vardir/membergroups.txt"; }
-                  if (!@nopostorder && -e "$vardir/nopostorder.txt") {
-                        fopen(NPORDER, "$vardir/nopostorder.txt");
-                        @nopostorder = <NPORDER>;
-                        fclose(NPORDER);
-                        chomp(@nopostorder);
-                  }
+    my $setfile;
+    if ( $file eq 'Settings.pl' ) {
+        if ( $settings_file_version ne $YaBBversion ) {    # START upgrade codes
+                # The following is for upgrades from YaBB versions < 2.3 START
+            if ( $enable_notifications eq '' ) {
+                $enable_notifications = $enable_notification ? 3 : 0;
+            }
+            $fix_avatar_img_size ||= 0;
+            $fix_post_img_size   ||= 0;
+            $fix_signat_img_size ||= 0;
+            $fix_attach_img_size ||= 0;
 
-                  if (-e "$vardir/advsettings.txt") { require "$vardir/advsettings.txt"; }
-                  if (-e "$vardir/secsettings.txt") { require "$vardir/secsettings.txt"; }
+            # The following is for upgrades from YaBB versions < 2.3 END
 
-                  if (-e "$vardir/Smilies.txt") {
-                        require "$vardir/Smilies.txt";
-                        $popback =~ s/[^a-f0-9]//ig;
-                        $poptext =~ s/[^a-f0-9]//ig;
-                  }
-
-                  if (-e "$vardir/template.cfg") { require "$vardir/template.cfg"; }
-                  elsif (!%templateset) { # only for upgrade from very old versions
-                        opendir(TMPLDIR, "$templatesdir"); my @configs = readdir(TMPLDIR); closedir(TMPLDIR);
-                        foreach (@configs) { if (-e "$templatesdir/$_/$_.cfg") { require "$admindir/ManageTemplates.pl"; &UpdateTemplates($_, "new"); } }
-                  }
-
-                  if (-e "$vardir/Guardian.banned") { require "$vardir/Guardian.banned"; }
-                  if (-e "$vardir/Guardian.settings") { require "$vardir/Guardian.settings"; }
-
-                  if (-e "$vardir/ban.txt") {
-                        fopen(BAN, "$vardir/ban.txt");
-                        foreach (<BAN>) {
-                              my ($type, $bannedlist) = split(/\|/, $_, 2);
-                              chomp($bannedlist);
-                              $ip_banlist = $bannedlist if $type =~ /I/i;
-                              $email_banlist = $bannedlist if $type =~ /E/i;
-                              $user_banlist = $bannedlist if $type =~ /U/i;
-                        }
-                        fclose(BAN);
-                  }
-
-                  if (-e "$vardir/HelpSettings.txt") { require "$vardir/HelpSettings.txt"; }
-                  if (-e "$vardir/BackupSettings.cgi") { require "$vardir/BackupSettings.cgi"; @backup_paths = @paths; }
-
-                  if (-e "$vardir/extended_profiles_order.txt") {
-                        fopen(EXT_FILE, "$vardir/extended_profiles_order.txt");
-                        @ext_prof_order = <EXT_FILE>;
-                        fclose(EXT_FILE);
-                        chomp(@ext_prof_order);
-                  }
-                  if (-e "$vardir/extended_profiles_fields.txt") {
-                        fopen(EXT_FILE, "$vardir/extended_profiles_fields.txt");
-                        @ext_prof_fields = <EXT_FILE>;
-                        fclose(EXT_FILE);
-                        chomp(@ext_prof_fields);
-                  }
-
-                  if (-e "$vardir/palette.def") {
-                        fopen(DEFPAL, "$vardir/palette.def"); @pallist = <DEFPAL>; fclose(DEFPAL); chomp(@pallist);
-                  }
-
-                  if (!@AdvancedTabs) {
-                        if (-e "$vardir/taborder.txt") {
-                              fopen(TABFILE, "$vardir/taborder.txt");
-                              @AdvancedTabs = <TABFILE>;
-                              fclose(TABFILE);
-                              chomp(@AdvancedTabs);
-                        } else { @AdvancedTabs = qw (home help search ml admin revalidatesession login register guestpm mycenter logout); }
-
-                        if (fopen(EXTTAB, "$vardir/tabs_ext.def")) {
-                              my %exttabs = map /(.*)\t(.*)/, <EXTTAB>;
-                              fclose(EXTTAB);
-                              for (my $i = 0; $i < @AdvancedTabs; $i++) {
-                                    if ($exttabs{$AdvancedTabs[$i]}) {
-                                          $exttabs{$AdvancedTabs[$i]} =~ s/"//g;
-                                          $AdvancedTabs[$i] .= "|$exttabs{$AdvancedTabs[$i]}";
-                                    }
-                              }
-                              chomp(@AdvancedTabs);
-                        }
-                  }
-                  # The following is for upgrades from YaBB versions < 2.4 END
-
-                  # The following is for upgrades from YaBB versions < 2.3 START
-                  if (-e "$vardir/upgrade_secsettings.txt") { require "$vardir/upgrade_secsettings.txt"; }
-                  if (-e "$vardir/upgrade_advsettings.txt") { require "$vardir/upgrade_advsettings.txt"; }
-                  if (-e "$vardir/upgrade_Settings.pl") { require "$vardir/upgrade_Settings.pl"; }
-                  # The following is for upgrades from YaBB versions < 2.3 END
-            } # END upgrade codes
-
-            # Since these are normally in a hash, fix that here
-            $fadertext       ||= $color{'fadertext'};
-            $faderbackground ||= $color{'faderbg'};
-
-            my $templateset = join('', map { qq~'$_' => "$templateset{$_}",\n~; } keys(%templateset));
-
-            my $ext_prof_order = '"' . join('","', @ext_prof_order) . '"' if @ext_prof_order;
-            my $ext_prof_fields = '"' . join(qq~",\n"~, @ext_prof_fields) . '"' if @ext_prof_fields;
-
-            my $member_groups = "# Static Member Groups\n";
-            foreach (keys %Group)  { $member_groups .= qq~\$Group{'$_'} = '$Group{$_}';\n~; }
-            $member_groups .= "\n# Post independent Member Groups\n";
-            foreach (keys %NoPost) { $member_groups .= qq~\$NoPost{'$_'} = '$NoPost{$_}';\n~; }
-            $member_groups .= "\n# Post dependent Member Groups\n";
-            foreach (keys %Post)   { $member_groups .= qq~\$Post{'$_'} = '$Post{$_}';\n~; }
-
-            my $pallist = '"' . join('","', @pallist) . '"' if @pallist;
-
-            if ($INFO{'page'} eq 'main') {
-                  if (!$enable_notifications_N && !$enable_notifications_PM) {
-                        $enable_notifications = 0;
-                  } elsif ($enable_notifications_N && !$enable_notifications_PM) {
-                        $enable_notifications = 1;
-                  } elsif (!$enable_notifications_N && $enable_notifications_PM) {
-                        $enable_notifications = 2;
-                  } elsif ($enable_notifications_N && $enable_notifications_PM) {
-                        $enable_notifications = 3;
-                  }
+            # The following is for upgrades from YaBB versions < 2.4 START
+            if ( -e "$vardir/membergroups.txt" ) {
+                require "$vardir/membergroups.txt";
+            }
+            if ( !@nopostorder && -e "$vardir/nopostorder.txt" ) {
+                fopen( NPORDER, "$vardir/nopostorder.txt" );
+                @nopostorder = <NPORDER>;
+                fclose(NPORDER);
+                chomp(@nopostorder);
             }
 
-            my $AdvancedTabs = '"' . join('","', @AdvancedTabs) . '"';
+            if ( -e "$vardir/advsettings.txt" ) {
+                require "$vardir/advsettings.txt";
+            }
+            if ( -e "$vardir/secsettings.txt" ) {
+                require "$vardir/secsettings.txt";
+            }
 
-            my $SmilieURL = '"' . join('","', @SmilieURL) . '"' if @SmilieURL;
-            my $SmilieCode = '"' . join('","', @SmilieCode) . '"' if @SmilieCode;
-            my $SmilieDescription = '"' . join('","', @SmilieDescription) . '"' if @SmilieDescription;
-            my $SmilieLinebreak = '"' . join('","', @SmilieLinebreak) . '"' if @SmilieLinebreak;
+            if ( -e "$vardir/Smilies.txt" ) {
+                require "$vardir/Smilies.txt";
+                $popback =~ s/[^a-f0-9]//ig;
+                $poptext =~ s/[^a-f0-9]//ig;
+            }
 
-            my $backup_paths = join(' ', @backup_paths);
+            if ( -e "$vardir/template.cfg" ) { require "$vardir/template.cfg"; }
+            elsif ( !%templateset ) {  # only for upgrade from very old versions
+                opendir( TMPLDIR, "$templatesdir" );
+                my @configs = readdir(TMPLDIR);
+                closedir(TMPLDIR);
+                foreach (@configs) {
+                    if ( -e "$templatesdir/$_/$_.cfg" ) {
+                        require "$admindir/ManageTemplates.pl";
+                        &UpdateTemplates( $_, "new" );
+                    }
+                }
+            }
 
-            $smtp_server =~ s/^\s+|\s+$//g;
+            if ( -e "$vardir/Guardian.banned" ) {
+                require "$vardir/Guardian.banned";
+            }
+            if ( -e "$vardir/Guardian.settings" ) {
+                require "$vardir/Guardian.settings";
+            }
 
-            $setfile = << "EOF";
+            if ( -e "$vardir/ban.txt" ) {
+                fopen( BAN, "$vardir/ban.txt" );
+                foreach (<BAN>) {
+                    my ( $type, $bannedlist ) = split( /\|/, $_, 2 );
+                    chomp($bannedlist);
+                    $ip_banlist    = $bannedlist if $type =~ /I/i;
+                    $email_banlist = $bannedlist if $type =~ /E/i;
+                    $user_banlist  = $bannedlist if $type =~ /U/i;
+                }
+                fclose(BAN);
+            }
+
+            if ( -e "$vardir/HelpSettings.txt" ) {
+                require "$vardir/HelpSettings.txt";
+            }
+            if ( -e "$vardir/BackupSettings.cgi" ) {
+                require "$vardir/BackupSettings.cgi";
+                @backup_paths = @paths;
+            }
+
+            if ( -e "$vardir/extended_profiles_order.txt" ) {
+                fopen( EXT_FILE, "$vardir/extended_profiles_order.txt" );
+                @ext_prof_order = <EXT_FILE>;
+                fclose(EXT_FILE);
+                chomp(@ext_prof_order);
+            }
+            if ( -e "$vardir/extended_profiles_fields.txt" ) {
+                fopen( EXT_FILE, "$vardir/extended_profiles_fields.txt" );
+                @ext_prof_fields = <EXT_FILE>;
+                fclose(EXT_FILE);
+                chomp(@ext_prof_fields);
+            }
+
+            if ( -e "$vardir/palette.def" ) {
+                fopen( DEFPAL, "$vardir/palette.def" );
+                @pallist = <DEFPAL>;
+                fclose(DEFPAL);
+                chomp(@pallist);
+            }
+
+            if ( !@AdvancedTabs ) {
+                if ( -e "$vardir/taborder.txt" ) {
+                    fopen( TABFILE, "$vardir/taborder.txt" );
+                    @AdvancedTabs = <TABFILE>;
+                    fclose(TABFILE);
+                    chomp(@AdvancedTabs);
+                }
+                else {
+                    @AdvancedTabs =
+                      qw (home help search ml admin revalidatesession login register guestpm mycenter logout);
+                }
+
+                if ( fopen( EXTTAB, "$vardir/tabs_ext.def" ) ) {
+                    my %exttabs = map /(.*)\t(.*)/, <EXTTAB>;
+                    fclose(EXTTAB);
+                    for ( my $i = 0 ; $i < @AdvancedTabs ; $i++ ) {
+                        if ( $exttabs{ $AdvancedTabs[$i] } ) {
+                            $exttabs{ $AdvancedTabs[$i] } =~ s/"//g;
+                            $AdvancedTabs[$i] .= "|$exttabs{$AdvancedTabs[$i]}";
+                        }
+                    }
+                    chomp(@AdvancedTabs);
+                }
+            }
+
+            # The following is for upgrades from YaBB versions < 2.4 END
+
+            # The following is for upgrades from YaBB versions < 2.3 START
+            if ( -e "$vardir/upgrade_secsettings.txt" ) {
+                require "$vardir/upgrade_secsettings.txt";
+            }
+            if ( -e "$vardir/upgrade_advsettings.txt" ) {
+                require "$vardir/upgrade_advsettings.txt";
+            }
+            if ( -e "$vardir/upgrade_Settings.pl" ) {
+                require "$vardir/upgrade_Settings.pl";
+            }
+
+            # The following is for upgrades from YaBB versions < 2.3 END
+        }    # END upgrade codes
+
+        # Since these are normally in a hash, fix that here
+        $fadertext       ||= $color{'fadertext'};
+        $faderbackground ||= $color{'faderbg'};
+
+        my $templateset = join( '',
+            map { qq~'$_' => "$templateset{$_}",\n~; } keys(%templateset) );
+
+        my $ext_prof_order = '"' . join( '","', @ext_prof_order ) . '"'
+          if @ext_prof_order;
+        my $ext_prof_fields = '"' . join( qq~",\n"~, @ext_prof_fields ) . '"'
+          if @ext_prof_fields;
+
+        my $member_groups = "# Static Member Groups\n";
+        foreach ( keys %Group ) {
+            $member_groups .= qq~\$Group{'$_'} = '$Group{$_}';\n~;
+        }
+        $member_groups .= "\n# Post independent Member Groups\n";
+        foreach ( keys %NoPost ) {
+            $member_groups .= qq~\$NoPost{'$_'} = '$NoPost{$_}';\n~;
+        }
+        $member_groups .= "\n# Post dependent Member Groups\n";
+        foreach ( keys %Post ) {
+            $member_groups .= qq~\$Post{'$_'} = '$Post{$_}';\n~;
+        }
+
+        my $pallist = '"' . join( '","', @pallist ) . '"' if @pallist;
+
+        if ( $INFO{'page'} eq 'main' ) {
+            if ( !$enable_notifications_N && !$enable_notifications_PM ) {
+                $enable_notifications = 0;
+            }
+            elsif ( $enable_notifications_N && !$enable_notifications_PM ) {
+                $enable_notifications = 1;
+            }
+            elsif ( !$enable_notifications_N && $enable_notifications_PM ) {
+                $enable_notifications = 2;
+            }
+            elsif ( $enable_notifications_N && $enable_notifications_PM ) {
+                $enable_notifications = 3;
+            }
+        }
+
+        my $AdvancedTabs = '"' . join( '","', @AdvancedTabs ) . '"';
+
+        my $SmilieURL  = '"' . join( '","', @SmilieURL ) . '"'  if @SmilieURL;
+        my $SmilieCode = '"' . join( '","', @SmilieCode ) . '"' if @SmilieCode;
+        my $SmilieDescription = '"' . join( '","', @SmilieDescription ) . '"'
+          if @SmilieDescription;
+        my $SmilieLinebreak = '"' . join( '","', @SmilieLinebreak ) . '"'
+          if @SmilieLinebreak;
+
+        my $backup_paths = join( ' ', @backup_paths );
+
+        $smtp_server =~ s/^\s+|\s+$//g;
+
+        $setfile = << "EOF";
 ###############################################################################
 # Settings.pl                                                                 #
 ###############################################################################
@@ -983,77 +1091,90 @@ $ext_prof_fields
 1;
 EOF
 
-      } else {
-            # This should only be seen by developers.
-            # If you get this, then you've typoed $file
-            # or tried to write to one that isn't implemented here.
-            die "I don't know how to write to this file.";
-      }
+    }
+    else {
 
-      WriteSettingsTo("$vardir/$file", $setfile);
+        # This should only be seen by developers.
+        # If you get this, then you've typoed $file
+        # or tried to write to one that isn't implemented here.
+        die "I don't know how to write to this file.";
+    }
 
-      if ($settings_file_version ne $YaBBversion) { # START upgrade codes
+    WriteSettingsTo( "$vardir/$file", $setfile );
+
+    if ( $settings_file_version ne $YaBBversion ) {    # START upgrade codes
             # The following is for upgrades from YaBB versions < 2.4 START
-            unlink("$vardir/nopostorder.txt") if -e "$vardir/nopostorder.txt";
-            unlink("$vardir/advsettings.txt") if -e "$vardir/advsettings.txt";
-            unlink("$vardir/secsettings.txt") if -e "$vardir/secsettings.txt";
-            unlink("$vardir/membergroups.txt") if -e "$vardir/membergroups.txt";
-            unlink("$vardir/Smilies.txt") if -e "$vardir/Smilies.txt";
-            unlink("$vardir/template.cfg") if -e "$vardir/template.cfg";
-            unlink("$vardir/Guardian.banned") if -e "$vardir/Guardian.banned";
-            unlink("$vardir/Guardian.settings") if -e "$vardir/Guardian.settings";
-            unlink("$vardir/ban.txt") if -e "$vardir/ban.txt";
-            unlink("$vardir/ban_email.txt") if -e "$vardir/ban_email.txt";
-            unlink("$vardir/ban_memname.txt") if -e "$vardir/ban_memname.txt";
-            unlink("$vardir/HelpSettings.txt") if -e "$vardir/HelpSettings.txt";
-            unlink("$vardir/BackupSettings.cgi") if -e "$vardir/BackupSettings.cgi";
-            unlink("$vardir/extended_profiles_order.txt") if -e "$vardir/extended_profiles_order.txt";
-            unlink("$vardir/extended_profiles_fields.txt") if -e "$vardir/extended_profiles_fields.txt";
-            unlink("$vardir/palette.def") if -e "$vardir/palette.def";
-            unlink("$vardir/taborder.txt") if -e "$vardir/taborder.txt";
-            unlink("$vardir/tabs_ext.def") if -e "$vardir/tabs_ext.def";
-            # The following is for upgrades from YaBB versions < 2.4 END
+        unlink("$vardir/nopostorder.txt")    if -e "$vardir/nopostorder.txt";
+        unlink("$vardir/advsettings.txt")    if -e "$vardir/advsettings.txt";
+        unlink("$vardir/secsettings.txt")    if -e "$vardir/secsettings.txt";
+        unlink("$vardir/membergroups.txt")   if -e "$vardir/membergroups.txt";
+        unlink("$vardir/Smilies.txt")        if -e "$vardir/Smilies.txt";
+        unlink("$vardir/template.cfg")       if -e "$vardir/template.cfg";
+        unlink("$vardir/Guardian.banned")    if -e "$vardir/Guardian.banned";
+        unlink("$vardir/Guardian.settings")  if -e "$vardir/Guardian.settings";
+        unlink("$vardir/ban.txt")            if -e "$vardir/ban.txt";
+        unlink("$vardir/ban_email.txt")      if -e "$vardir/ban_email.txt";
+        unlink("$vardir/ban_memname.txt")    if -e "$vardir/ban_memname.txt";
+        unlink("$vardir/HelpSettings.txt")   if -e "$vardir/HelpSettings.txt";
+        unlink("$vardir/BackupSettings.cgi") if -e "$vardir/BackupSettings.cgi";
+        unlink("$vardir/extended_profiles_order.txt")
+          if -e "$vardir/extended_profiles_order.txt";
+        unlink("$vardir/extended_profiles_fields.txt")
+          if -e "$vardir/extended_profiles_fields.txt";
+        unlink("$vardir/palette.def")  if -e "$vardir/palette.def";
+        unlink("$vardir/taborder.txt") if -e "$vardir/taborder.txt";
+        unlink("$vardir/tabs_ext.def") if -e "$vardir/tabs_ext.def";
 
-            # The following is for upgrades from YaBB versions < 2.3 START
-            unlink("$vardir/upgrade_secsettings.txt") if -e "$vardir/upgrade_secsettings.txt";
-            unlink("$vardir/upgrade_advsettings.txt") if -e "$vardir/upgrade_advsettings.txt";
-            unlink("$vardir/upgrade_Settings.pl") if -e "$vardir/upgrade_Settings.pl";
-            # The following is for upgrades from YaBB versions < 2.3 END
-      } # END upgrade codes
+        # The following is for upgrades from YaBB versions < 2.4 END
+
+        # The following is for upgrades from YaBB versions < 2.3 START
+        unlink("$vardir/upgrade_secsettings.txt")
+          if -e "$vardir/upgrade_secsettings.txt";
+        unlink("$vardir/upgrade_advsettings.txt")
+          if -e "$vardir/upgrade_advsettings.txt";
+        unlink("$vardir/upgrade_Settings.pl")
+          if -e "$vardir/upgrade_Settings.pl";
+
+        # The following is for upgrades from YaBB versions < 2.3 END
+    }    # END upgrade codes
 }
 
 # Subroutine for writing the common format of settings file
 sub WriteSettingsTo {
-      my ($file, $setfile) = @_;
+    my ( $file, $setfile ) = @_;
 
-      # Fix a certain type of syntax error
-      $setfile =~ s~=\s+;~= 0;~g;
+    # Fix a certain type of syntax error
+    $setfile =~ s~=\s+;~= 0;~g;
 
-      # Make it look nicely aligned. The comment starts after 50 Col
-      my $filler = ' ' x 50;
-      $setfile =~ s~(.+;)[ \t]+(#.+$)~ $1 . substr($filler,(length $1 < 50 ? length $1 : 49)) . $2 ~gem;
-      $setfile =~ s~\t+(#.+$)~$filler$1~gm;
-      $setfile =~ s~(.+)(#.+$)~ $1 . &cut_comment($1,$2) ~gem;
+    # Make it look nicely aligned. The comment starts after 50 Col
+    my $filler = ' ' x 50;
+    $setfile =~
+s~(.+;)[ \t]+(#.+$)~ $1 . substr($filler,(length $1 < 50 ? length $1 : 49)) . $2 ~gem;
+    $setfile =~ s~\t+(#.+$)~$filler$1~gm;
+    $setfile =~ s~(.+)(#.+$)~ $1 . &cut_comment($1,$2) ~gem;
 
-      sub cut_comment { # line brake of too long comments
-            my ($comment,$length) = ('',120); # 120 Col is the max width of page
-            my $var_length = length($_[0]);
-            while ($length < $var_length) { $length += 120; }
-            foreach (split(/ +/, $_[1])) {
-                  if (($var_length + length($comment) + length($_)) > $length) {
-                        $comment =~ s/ $//;
-                        $comment .= "\n$filler#  $_ ";
-                        $length += 120;
-                  } else { $comment .= "$_ "; }
+    sub cut_comment {    # line brake of too long comments
+        my ( $comment, $length ) =
+          ( '', 120 );    # 120 Col is the max width of page
+        my $var_length = length( $_[0] );
+        while ( $length < $var_length ) { $length += 120; }
+        foreach ( split( / +/, $_[1] ) ) {
+            if ( ( $var_length + length($comment) + length($_) ) > $length ) {
+                $comment =~ s/ $//;
+                $comment .= "\n$filler#  $_ ";
+                $length += 120;
             }
-            $comment =~ s/ $//;
-            $comment;
-      }
+            else { $comment .= "$_ "; }
+        }
+        $comment =~ s/ $//;
+        $comment;
+    }
 
-      # Write it out
-      fopen(SETTINGS, ">$file") || &admin_fatal_error('cannot_open', $file, 1);
-      print SETTINGS $setfile;
-      fclose(SETTINGS);
+    # Write it out
+    fopen( SETTINGS, ">$file" )
+      || &admin_fatal_error( 'cannot_open', $file, 1 );
+    print SETTINGS $setfile;
+    fclose(SETTINGS);
 }
 
 1;

@@ -1,5 +1,6 @@
 ###############################################################################
 # InstantMessage.pl                                                           #
+# $Date: 9/20/2012 $                                                          #
 ###############################################################################
 # YaBB: Yet another Bulletin Board                                            #
 # Open-Source Community Software for Webmasters                               #
@@ -11,113 +12,149 @@
 # Software by:  The YaBB Development Team                                     #
 #               with assistance from the YaBB community.                      #
 ###############################################################################
+# use strict;
+# use warnings;
+no warnings qw(uninitialized once redefine);
+use CGI::Carp qw(fatalsToBrowser);
+use English '-no_match_vars';
+our $VERSION = 1.0;
 
 $instantmessageplver = 'YaBB 2.6 $Revision: 1.0 $';
-if ($action eq 'detailedversion') { return 1; }
+if ( $action eq 'detailedversion' ) { return 1; }
 $set_subjectMaxLength ||= 50;
 
 ## create the send IM section of the screen
 
 sub buildIMsend {
-      &LoadLanguage('InstantMessage');
-      &LoadLanguage('Post');
-      &LoadCensorList;
+    &LoadLanguage('InstantMessage');
+    &LoadLanguage('Post');
+    &LoadCensorList;
 
-      if ($FORM{'previewim'}) {
-            require "$sourcedir/Post.pl";
-            if (!$error){ &Preview; $subject = $csubject; }
-            else { &Preview($error); }
-            &FromHTML($message);
-            &FromHTML($subject);
-      }
-      $mctitle = $inmes_txt{'775'};
-      ## check for a draft being opened
-      if ($INFO{'caller'} == 4 && $INFO{'id'}) {
-            if (!-e "$memberdir/$username.imdraft") { &fatal_error('cannot_open', "$username.imdraft");}
-            fopen(DRAFT, "$memberdir/$username.imdraft");
-            my @draftPM = <DRAFT>;
-            fclose(DRAFT);
-            chomp @draftPM;
-            my $flagfound;
-            foreach my $draftMess (@draftPM) {
-                  my ($checkId, undef) = split(/\|/, $draftMess, 2);
-                  if ($checkId eq $INFO{'id'}){
-                        ($dmessageid, $dmusername, $userto, $usernamecc, $usernamebcc, $subject, $dmdate, $message, $dmpmessageid, $dmreplyno, $dmips, $dmessageStatus, $dmessageFlags, $dstoreFolder, $dmessageAttachment) = split(/\|/, $draftMess);
-                        $flagfound = 1;
-                        last;
-                  }
+    if ( $FORM{'previewim'} ) {
+        require "$sourcedir/Post.pl";
+        if ( !$error ) { &Preview; $subject = $csubject; }
+        else           { &Preview($error); }
+        &FromHTML($message);
+        &FromHTML($subject);
+    }
+    $mctitle = $inmes_txt{'775'};
+    ## check for a draft being opened
+    if ( $INFO{'caller'} == 4 && $INFO{'id'} ) {
+        if ( !-e "$memberdir/$username.imdraft" ) {
+            &fatal_error( 'cannot_open', "$username.imdraft" );
+        }
+        fopen( DRAFT, "$memberdir/$username.imdraft" );
+        my @draftPM = <DRAFT>;
+        fclose(DRAFT);
+        chomp @draftPM;
+        my $flagfound;
+        foreach my $draftMess (@draftPM) {
+            my ( $checkId, undef ) = split( /\|/, $draftMess, 2 );
+            if ( $checkId eq $INFO{'id'} ) {
+                (
+                    $dmessageid,    $dmusername,   $userto,
+                    $usernamecc,    $usernamebcc,  $subject,
+                    $dmdate,        $message,      $dmpmessageid,
+                    $dmreplyno,     $dmips,        $dmessageStatus,
+                    $dmessageFlags, $dstoreFolder, $dmessageAttachment
+                ) = split( /\|/, $draftMess );
+                $flagfound = 1;
+                last;
             }
-            if (!$flagfound) { &fatal_error('cannot_find_draftmess'); }
-            &FromHTML($message);
-            &FromHTML($subject);
-      }
+        }
+        if ( !$flagfound ) { &fatal_error('cannot_find_draftmess'); }
+        &FromHTML($message);
+        &FromHTML($subject);
+    }
 
-      my $pmicon = 'standard';
-      $stselect = '';
-      $urselect = '';
-      $cnselect = '';
-      if ($FORM{'status'} || $INFO{'status'}) { $thestatus = $FORM{'status'} || $INFO{'status'}; }
-      elsif ($dmessageStatus){ $thestatus = $dmessageStatus; }
-      else { $thestatus = 's'; }
+    my $pmicon = 'standard';
+    $stselect = '';
+    $urselect = '';
+    $cnselect = '';
+    if ( $FORM{'status'} || $INFO{'status'} ) {
+        $thestatus = $FORM{'status'} || $INFO{'status'};
+    }
+    elsif ($dmessageStatus) { $thestatus = $dmessageStatus; }
+    else                    { $thestatus = 's'; }
 
-      if ($thestatus eq 's') { $stselect = qq~ selected="selected"~; }
-      elsif ($thestatus eq 'u') { $urselect = qq~ selected="selected"~; }
-      elsif ($thestatus eq 'c') { $cnselect = qq~ selected="selected"~; }
-      elsif ($thestatus eq 'sb') { $stselect = qq~ selected="selected"~; $sendBMess = 1; }
-      elsif ($thestatus eq 'ub') { $urselect = qq~ selected="selected"~; $sendBMess = 1; }
-      elsif ($thestatus eq 'cb') { $cnselect = qq~ selected="selected"~; $sendBMess = 1; }
-      $sendBMess = 0 unless $sendBMess == 1 && (($PMenableBm_level == 1 && ($iamadmin || $iamgmod || $iammod)) || ($PMenableBm_level == 2 && ($iamadmin || $iamgmod)) || ($PMenableBm_level == 3 && $iamadmin));
+    if    ( $thestatus eq 's' ) { $stselect = qq~ selected="selected"~; }
+    elsif ( $thestatus eq 'u' ) { $urselect = qq~ selected="selected"~; }
+    elsif ( $thestatus eq 'c' ) { $cnselect = qq~ selected="selected"~; }
+    elsif ( $thestatus eq 'sb' ) {
+        $stselect  = qq~ selected="selected"~;
+        $sendBMess = 1;
+    }
+    elsif ( $thestatus eq 'ub' ) {
+        $urselect  = qq~ selected="selected"~;
+        $sendBMess = 1;
+    }
+    elsif ( $thestatus eq 'cb' ) {
+        $cnselect  = qq~ selected="selected"~;
+        $sendBMess = 1;
+    }
+    $sendBMess = 0
+      unless $sendBMess == 1
+          && (
+              (
+                  $PMenableBm_level == 1 && ( $iamadmin || $iamgmod || $iammod )
+              )
+              || ( $PMenableBm_level == 2 && ( $iamadmin || $iamgmod ) )
+              || ( $PMenableBm_level == 3 && $iamadmin )
+          );
 
-      ##########   post code   #########
-      if (!$iamadmin && !$iamgmod && !$staff && ${$uid.$username}{'postcount'} < $numposts) {
-            &fatal_error('im_low_postcount');
-      }
+    ##########   post code   #########
+    if (   !$iamadmin
+        && !$iamgmod
+        && !$staff
+        && ${ $uid . $username }{'postcount'} < $numposts )
+    {
+        &fatal_error('im_low_postcount');
+    }
 
-      if (!$replyguest) {
-            if ($is_preview) { $post_txt{'507'} = $post_txt{'771'}; }
-            $normalquot = $post_txt{'599'};
-            $simpelquot = $post_txt{'601'};
-            $simpelcode = $post_txt{'602'};
-            $edittext = $post_txt{'603'};
-            if (!$fontsizemax) { $fontsizemax = 72; }
-            if (!$fontsizemin) { $fontsizemin = 6; }
+    if ( !$replyguest ) {
+        if ($is_preview) { $post_txt{'507'} = $post_txt{'771'}; }
+        $normalquot = $post_txt{'599'};
+        $simpelquot = $post_txt{'601'};
+        $simpelcode = $post_txt{'602'};
+        $edittext   = $post_txt{'603'};
+        if ( !$fontsizemax ) { $fontsizemax = 72; }
+        if ( !$fontsizemin ) { $fontsizemin = 6; }
 
-            # this defines what the top area of the post box will look like:
-            ## if this is a reply , load the 'from' name off the message
-            if ($INFO{'reply'} || $INFO{'quote'}) { $INFO{'to'} = $mfrom; }
-            if (!$INFO{'to'} && $FORM{'to'} ne '') { $INFO{'to'} = $FORM{'to'}; }
+        # this defines what the top area of the post box will look like:
+        ## if this is a reply , load the 'from' name off the message
+        if ( $INFO{'reply'} || $INFO{'quote'} ) { $INFO{'to'} = $mfrom; }
+        if ( !$INFO{'to'} && $FORM{'to'} ne '' ) { $INFO{'to'} = $FORM{'to'}; }
 
-            ## if cloaking is enabled, and 'to' is not a blank
-            if ($do_scramble_id && $INFO{'to'} ne '') {
-                  &decloak($INFO{'to'});
-            }
+        ## if cloaking is enabled, and 'to' is not a blank
+        if ( $do_scramble_id && $INFO{'to'} ne '' ) {
+            &decloak( $INFO{'to'} );
+        }
 
-            if (!$sendBMess) { &LoadUser($INFO{'to'}); }
-      }
+        if ( !$sendBMess ) { &LoadUser( $INFO{'to'} ); }
+    }
 
+    $message =~ s~<br.*?>~\n~gi;
+    $message =~ s/&nbsp;/ /g;
+    &ToChars($message);
+    $message = &Censor($message);
+    &ToHTML($message);
+    $message =~ s/ &nbsp; &nbsp; &nbsp;/\t/ig;
 
-      $message =~ s~<br.*?>~\n~gi;
-      $message =~ s/&nbsp;/ /g;
-      &ToChars($message);
-      $message = &Censor($message);
-      &ToHTML($message);
-      $message =~ s/ &nbsp; &nbsp; &nbsp;/\t/ig;
+    if ($msubject) { $subject = $msubject; }
+    &ToChars($subject);
+    $subject = &Censor($subject);
+    &ToHTML($subject);
 
-      if ($msubject) { $subject = $msubject; }
-      &ToChars($subject);
-      $subject = &Censor($subject);
-      &ToHTML($subject);
+    if ( $action eq "modify" || $action eq "modify2" ) {
+        $displayname = qq~$mename~;
+    }
+    else {
+        $displayname = ${ $uid . $username }{'realname'};
+    }
+    require "$sourcedir/ContextHelp.pl";
+    &ContextScript("post");
 
-
-      if ($action eq "modify" || $action eq "modify2") {
-            $displayname = qq~$mename~;
-      } else {
-            $displayname = ${$uid.$username}{'realname'};
-      }
-      require "$sourcedir/ContextHelp.pl";
-      &ContextScript("post");
-
-      $MCGlobalFormStart .= qq~
+    $MCGlobalFormStart .= qq~
       $ctmain
       <script language="JavaScript1.2" src="$yyhtml_root/yabbc.js" type="text/javascript"></script>
       <script language="JavaScript1.2" src="$yyhtml_root/ubbc.js" type="text/javascript"></script>
@@ -127,18 +164,25 @@ sub buildIMsend {
       </script>
       ~;
 
-      if ($prevmain && !$replyguest) {
-            $imsend .= qq~
+    if ( $prevmain && !$replyguest ) {
+        $imsend .= qq~
       <tr>
             <td class="windowbg">
             $prevmain
             </td>
       </tr>
       ~;
-      }
+    }
 
-      if (((!$enable_PMcontrols && $enable_PMActprev) || ($enable_PMcontrols && ${$uid.$username}{'pmactprev'})) && !$replyguest) {
-            $imsend .= qq~
+    if (
+        (
+               ( !$enable_PMcontrols && $enable_PMActprev )
+            || ( $enable_PMcontrols && ${ $uid . $username }{'pmactprev'} )
+        )
+        && !$replyguest
+      )
+    {
+        $imsend .= qq~
       <tr>
             <td class="windowbg" valign="top">
                   <table width="95%" align="left" cellpadding="2">
@@ -169,25 +213,25 @@ sub buildIMsend {
             </td>
       </tr>
             ~;
-      }
+    }
 
-      if ($replyguest) {
-            $imsend .= qq~
+    if ($replyguest) {
+        $imsend .= qq~
       <tr>
             <td class="windowbg2">
             $guest_reply{'guesttext'}
             </td>
       </tr>
             ~;
-      }
+    }
 
-      $imsend .= qq~
+    $imsend .= qq~
       <tr>
             <td class="windowbg" width="50%">
                   <table width="95%" align="left" cellpadding="2">~;
 
-      if (!$replyguest && !$sendBMess && ($PMenable_cc || $PMenable_bcc)) {
-            $yyjavascripttoform = qq~
+    if ( !$replyguest && !$sendBMess && ( $PMenable_cc || $PMenable_bcc ) ) {
+        $yyjavascripttoform = qq~
 
                   <script language="JavaScript1.2" type="text/javascript">
                   <!--
@@ -196,70 +240,78 @@ sub buildIMsend {
                         document.getElementById('bnttoto').className = 'windowbg';
             ~;
 
-            $imsend .= qq~
+        $imsend .= qq~
                         <tr>
                               <td align="left">
                               <div id="bnttoto" style="float: left; padding: 5px;" class="windowbg2"><a href="javascript:void(0);" onclick="changeRecepientTab('to'); return false;">$inmes_txt{'324'}:</a></div>
             ~;
-            if ($PMenable_cc) {
-                  $yyjavascripttoform .= qq~
+        if ($PMenable_cc) {
+            $yyjavascripttoform .= qq~
                         document.getElementById('userscc').style.display = 'none';
                         document.getElementById('bnttocc').className = 'windowbg';
                   ~;
-                  $imsend .= qq~
+            $imsend .= qq~
                               <div id="bnttocc" style="float: left; padding: 5px;" class="windowbg"><a href="javascript:void(0);" onclick="changeRecepientTab('cc'); return false;">$inmes_txt{'325'}:</a></div>
                   ~;
-            }
-            if ($PMenable_bcc) {
-                  $yyjavascripttoform .= qq~
+        }
+        if ($PMenable_bcc) {
+            $yyjavascripttoform .= qq~
                         document.getElementById('usersbcc').style.display = 'none';
                         document.getElementById('bnttobcc').className = 'windowbg';
                   ~;
-                  $imsend .= qq~
+            $imsend .= qq~
                               <div id="bnttobcc" style="float: left; padding: 5px;" class="windowbg"><a href="javascript:void(0);" onclick="changeRecepientTab('bcc'); return false;">$inmes_txt{'326'}:</a></div>
                   ~;
-            }
-            $yyjavascripttoform .= qq~
+        }
+        $yyjavascripttoform .= qq~
                         document.getElementById('users' + tabto).style.display = 'inline';
                         document.getElementById('bntto' + tabto).className = 'windowbg2';
                   }
             //-->
             </script>
             ~;
-            $imsend .= qq~$yyjavascripttoform
+        $imsend .= qq~$yyjavascripttoform
                               </td>
                         </tr>
             ~;
-      }
+    }
 
-      $imsend .= qq~
+    $imsend .= qq~
                         <tr>
                               <td width="60%" valign="top" align="left">\n~;
 
-      # now uses a multi-line select
-      &ProcIMrecs;
+    # now uses a multi-line select
+    &ProcIMrecs;
 
-      $toname = $INFO{'forward'} ? '' : $INFO{'to'};
+    $toname = $INFO{'forward'} ? '' : $INFO{'to'};
 
-      my $toUsersTitle = $inmes_txt{'torecepients'};
+    my $toUsersTitle = $inmes_txt{'torecepients'};
 
-      my ($onchangeText, $onchangeText2);
-      if (((!$enable_PMcontrols && $enable_PMActprev) || ($enable_PMcontrols && ${$uid.$username}{'pmactprev'})) && !$replyguest) {
-            $onchangeText = qq~ onkeyup="updatTopic();"~;
-            $onchangeText2 = qq~ updatTopic();~;
-      }
+    my ( $onchangeText, $onchangeText2 );
+    if (
+        (
+               ( !$enable_PMcontrols && $enable_PMActprev )
+            || ( $enable_PMcontrols && ${ $uid . $username }{'pmactprev'} )
+        )
+        && !$replyguest
+      )
+    {
+        $onchangeText  = qq~ onkeyup="updatTopic();"~;
+        $onchangeText2 = qq~ updatTopic();~;
+    }
 
-      if (!$replyguest) {
-            if ($sendBMess) { $toUsersTitle = $inmes_txt{'togroups'}; }
-            if ($PMenable_cc || $PMenable_bcc) {
-                  $us_winhight = 370;
-            } else {
-                  $us_winhight = 345;
-            }
+    if ( !$replyguest ) {
+        if ($sendBMess) { $toUsersTitle = $inmes_txt{'togroups'}; }
+        if ( $PMenable_cc || $PMenable_bcc ) {
+            $us_winhight = 370;
+        }
+        else {
+            $us_winhight = 345;
+        }
 
-            my $toIdtext = $sendBMess ? 'groups' : 'toshow';
+        my $toIdtext = $sendBMess ? 'groups' : 'toshow';
 
-            $imsend  .= qq~
+        $imsend .= qq~
             <script language="JavaScript1.2" type="text/javascript">
             <!--
             function imWin() {
@@ -281,50 +333,71 @@ sub buildIMsend {
             <b>$inmes_txt{'324'} $toUsersTitle:</b>&nbsp;<a href="javascript: void(0);" onclick="imWin();" tabindex="1"><span class="small">$inmes_txt{'clickto1'} <i>$inmes_txt{'324'}</i> $toUsersTitle $inmes_txt{'clickto2'}</span></a><br />
             <select name="toshow" id="toshow" multiple="multiple" size="6" style="width: 100%;" ondblclick="removeUser(this);">\n~;
 
-            my $usefields;
-            if (!$sendBMess) {
-                  if ($toname) {
-                        &LoadUser($toname);
-                        if(${$uid.$toname}{'realname'}) {
-                              $imsend  .= qq~<option selected="selected" value="$useraccount{$toname}">${$uid.$toname}{'realname'}</option>\n~;
-                        }
-                  }
-                  if ($FORM{'toshow'}) {
-                        foreach my $touser (split(/,/, $FORM{'toshow'})) {
-                              &LoadUser($touser);
-                              $imsend .= qq~<option selected="selected" value="$useraccount{$touser}">${$uid.$touser}{'realname'}</option>\n~;
-                        }
-                  }
-                  if ($userto) {
-                        foreach my $touser (split(/,/, $userto)) {
-                              &LoadUser($touser);
-                              $imsend .= qq~<option selected="selected" value="$useraccount{$touser}">${$uid.$touser}{'realname'}</option>\n~;
-                        }
-                  }
-
-            } else {
-                  $FORM{'toshow'} = $mto || $FORM{'toshow'};
-                  if ($FORM{'toshow'}) {
-                        foreach my $touser (split(/,/, $FORM{'toshow'})) {
-                              if ($touser eq 'all') { $imsend .= qq~<option selected="selected" value="all">$inmes_txt{'bmallmembers'}</option>\n~;
-                              } elsif ($touser eq 'admins') { $imsend .= qq~<option selected="selected" value="admins">$inmes_txt{'bmadmins'}</option>\n~;
-                              } elsif ($touser eq 'gmods') { $imsend .= qq~<option selected="selected" value="gmods">$inmes_txt{'bmgmods'}</option>\n~;
-                              } elsif ($touser eq 'mods') { $imsend .= qq~<option selected="selected" value="mods">$inmes_txt{'bmmods'}</option>\n~;
-                              } else {
-                                    foreach (keys %NoPost) {
-                                          my ($title, undef) = split(/\|/, $NoPost{$_}, 2);
-                                          if ($touser eq $_) { $imsend .= qq~<option selected="selected" value="$_">$title</option>\n~; }
-                                    }
-                              }
-                        }
-                  }
+        my $usefields;
+        if ( !$sendBMess ) {
+            if ($toname) {
+                &LoadUser($toname);
+                if ( ${ $uid . $toname }{'realname'} ) {
+                    $imsend .=
+qq~<option selected="selected" value="$useraccount{$toname}">${$uid.$toname}{'realname'}</option>\n~;
+                }
+            }
+            if ( $FORM{'toshow'} ) {
+                foreach my $touser ( split( /,/, $FORM{'toshow'} ) ) {
+                    &LoadUser($touser);
+                    $imsend .=
+qq~<option selected="selected" value="$useraccount{$touser}">${$uid.$touser}{'realname'}</option>\n~;
+                }
+            }
+            if ($userto) {
+                foreach my $touser ( split( /,/, $userto ) ) {
+                    &LoadUser($touser);
+                    $imsend .=
+qq~<option selected="selected" value="$useraccount{$touser}">${$uid.$touser}{'realname'}</option>\n~;
+                }
             }
 
-            $imsend .= qq~                </select><input type="hidden" name="immulti" value="yes" />
+        }
+        else {
+            $FORM{'toshow'} = $mto || $FORM{'toshow'};
+            if ( $FORM{'toshow'} ) {
+                foreach my $touser ( split( /,/, $FORM{'toshow'} ) ) {
+                    if ( $touser eq 'all' ) {
+                        $imsend .=
+qq~<option selected="selected" value="all">$inmes_txt{'bmallmembers'}</option>\n~;
+                    }
+                    elsif ( $touser eq 'admins' ) {
+                        $imsend .=
+qq~<option selected="selected" value="admins">$inmes_txt{'bmadmins'}</option>\n~;
+                    }
+                    elsif ( $touser eq 'gmods' ) {
+                        $imsend .=
+qq~<option selected="selected" value="gmods">$inmes_txt{'bmgmods'}</option>\n~;
+                    }
+                    elsif ( $touser eq 'mods' ) {
+                        $imsend .=
+qq~<option selected="selected" value="mods">$inmes_txt{'bmmods'}</option>\n~;
+                    }
+                    else {
+                        foreach ( keys %NoPost ) {
+                            my ( $title, undef ) =
+                              split( /\|/, $NoPost{$_}, 2 );
+                            if ( $touser eq $_ ) {
+                                $imsend .=
+qq~<option selected="selected" value="$_">$title</option>\n~;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        $imsend .=
+qq~                </select><input type="hidden" name="immulti" value="yes" />
                   </div>
             ~;
 
-            $JSandInput = qq~
+        $JSandInput = qq~
             <script language="JavaScript1.2" type="text/javascript">
             <!--
             // this function forces all users listed on IM mult to be selected for processing
@@ -333,67 +406,71 @@ sub buildIMsend {
                   for (var i = 0; i < oList.options.length; i++) { oList.options[i].selected = true; }
             ~;
 
-            if (!$sendBMess) {
-                  if ($PMenable_cc) {
-                        $JSandInput .= qq~
+        if ( !$sendBMess ) {
+            if ($PMenable_cc) {
+                $JSandInput .= qq~
                               var oList = document.getElementById('toshowcc')
                               for (var i = 0; i < oList.options.length; i++){ oList.options[i].selected = true; }
                         ~;
-                        $imsend .= qq~
+                $imsend .= qq~
                         <div id="userscc" style="width: 98%; display: none; float: left;">
                         <b>$inmes_txt{'325'} $toUsersTitle:</b>&nbsp;<a href="javascript: void(0);" onclick="imWinCC();"><span class="small">$inmes_txt{'clickto1'} <i>$inmes_txt{'325'}</i> $toUsersTitle $inmes_txt{'clickto2'}</span></a><br />
                         <select name="toshowcc" id="toshowcc" multiple="multiple" size="6" style="width: 100%;" ondblclick="removeUser(this);">\n~;
-                        if ($FORM{'toshowcc'}) {
-                              foreach my $touser (split(/\,/, $FORM{'toshowcc'})) {
-                                    &LoadUser($touser);
-                                    $imsend .= qq~<option selected="selected" value="$useraccount{$touser}">${$uid.$touser}{'realname'}</option>\n~;
-                              }
-                        }
-                        if ($usernamecc) {
-                              foreach my $touser (split(/\,/, $usernamecc)) {
-                                    &LoadUser($touser);
-                                    $imsend .= qq~<option selected="selected" value="$useraccount{$touser}">${$uid.$touser}{'realname'}</option>\n~;
-                              }
-                        }
-                        $imsend .= qq~                      </select>
+                if ( $FORM{'toshowcc'} ) {
+                    foreach my $touser ( split( /\,/, $FORM{'toshowcc'} ) ) {
+                        &LoadUser($touser);
+                        $imsend .=
+qq~<option selected="selected" value="$useraccount{$touser}">${$uid.$touser}{'realname'}</option>\n~;
+                    }
+                }
+                if ($usernamecc) {
+                    foreach my $touser ( split( /\,/, $usernamecc ) ) {
+                        &LoadUser($touser);
+                        $imsend .=
+qq~<option selected="selected" value="$useraccount{$touser}">${$uid.$touser}{'realname'}</option>\n~;
+                    }
+                }
+                $imsend .= qq~                      </select>
                         </div>
                         ~;
-                  }
+            }
 
-                  if ($PMenable_bcc) {
-                        $JSandInput .= qq~
+            if ($PMenable_bcc) {
+                $JSandInput .= qq~
                               var oList = document.getElementById('toshowbcc')
                               for (var i = 0; i < oList.options.length; i++) { oList.options[i].selected = true; }
                         ~;
-                        $imsend .= qq~
+                $imsend .= qq~
                         <div id="usersbcc" style="width: 98%; display: none; float: left;">
                         <b>$inmes_txt{'326'} $toUsersTitle:</b>&nbsp;<a href="javascript: void(0);" onclick="imWinBCC();"><span class="small">$inmes_txt{'clickto1'} <i>$inmes_txt{'326'}</i> $toUsersTitle $inmes_txt{'clickto2'}</span></a><br />
                         <select name="toshowbcc" id="toshowbcc" multiple="multiple" size="6" style="width: 100%;" ondblclick="removeUser(this);">\n~;
-                        if ($FORM{'toshowbcc'}) {
-                              foreach my $touser (split(/\,/, $FORM{'toshowbcc'})) {
-                                    &LoadUser($touser);
-                                    $imsend .= qq~<option selected="selected" value="$useraccount{$touser}">${$uid.$touser}{'realname'}</option>\n~;
-                              }
-                        }
-                        if ($usernamebcc) {
-                              foreach my $touser (split(/\,/, $usernamebcc)) {
-                                    &LoadUser($touser);
-                                    $imsend .= qq~<option selected="selected" value="$useraccount{$touser}">${$uid.$touser}{'realname'}</option>\n~;
-                              }
-                        }
-                        $imsend .= qq~                      </select>
+                if ( $FORM{'toshowbcc'} ) {
+                    foreach my $touser ( split( /\,/, $FORM{'toshowbcc'} ) ) {
+                        &LoadUser($touser);
+                        $imsend .=
+qq~<option selected="selected" value="$useraccount{$touser}">${$uid.$touser}{'realname'}</option>\n~;
+                    }
+                }
+                if ($usernamebcc) {
+                    foreach my $touser ( split( /\,/, $usernamebcc ) ) {
+                        &LoadUser($touser);
+                        $imsend .=
+qq~<option selected="selected" value="$useraccount{$touser}">${$uid.$touser}{'realname'}</option>\n~;
+                    }
+                }
+                $imsend .= qq~                      </select>
                         </div>
                         ~;
-                  }
             }
+        }
 
-            $JSandInput .= qq~
+        $JSandInput .= qq~
                   }
             //-->
             </script>
             ~;
 
-            $imsend .= qq~
+        $imsend .= qq~
                               </td>
                               <td width="40%" valign="top" align="left">
                                     <label for="status"><b>$inmes_txt{'status'}:</b></label><br />
@@ -409,9 +486,11 @@ sub buildIMsend {
             </tr>
             ~;
 
-      } else {
+    }
+    else {
 
-            $imsend .= qq~                                  <b>$inmes_txt{'324'} $toUsersTitle:</b> <input type="text" name="toguest" id="toguest" value="$guestName" size="50" maxlength="25" style="width: 95%;" /><input type="hidden" name="toshow" id="toshow" value="$guestName" />
+        $imsend .=
+qq~                                  <b>$inmes_txt{'324'} $toUsersTitle:</b> <input type="text" name="toguest" id="toguest" value="$guestName" size="50" maxlength="25" style="width: 95%;" /><input type="hidden" name="toshow" id="toshow" value="$guestName" />
                               </td>
                               <td width="40%" valign="top" align="left">
                                     &nbsp;
@@ -430,13 +509,14 @@ sub buildIMsend {
                   </td>
             </tr>
             ~;
-      }
+    }
 
-      $subtitle = "<i>$subject</i>";
-      #this is the end of the upper area of the post page.
+    $subtitle = "<i>$subject</i>";
 
-      # this declares the beginning of the UBBC section
-      $JSandInput .= qq~
+    #this is the end of the upper area of the post page.
+
+    # this declares the beginning of the UBBC section
+    $JSandInput .= qq~
       <script language="JavaScript1.2" type="text/javascript">
       <!--
       function showimage() {
@@ -446,7 +526,7 @@ sub buildIMsend {
       </script>
       ~;
 
-      $JSandInput .= qq~
+    $JSandInput .= qq~
       <input type="hidden" name="threadid" id="threadid" value="$threadid" />
       <input type="hidden" name="postid" id="postid" value="$postid" />
       <input type="hidden" name="info" id="info" value="$INFO{'id'}$FORM{'info'}" />
@@ -454,15 +534,20 @@ sub buildIMsend {
       <input type="hidden" name="post_entry_time" id="post_entry_time" value="$date" />
       ~;
 
-      if ($FORM{'draftid'} || $INFO{'caller'} == 4) {
-            $JSandInput .= qq~<input type="hidden" name="draftid" id="draftid" value="~ . ($FORM{'draftid'} || $INFO{'id'}) . qq~" />~;
-      }
+    if ( $FORM{'draftid'} || $INFO{'caller'} == 4 ) {
+        $JSandInput .=
+            qq~<input type="hidden" name="draftid" id="draftid" value="~
+          . ( $FORM{'draftid'} || $INFO{'id'} )
+          . qq~" />~;
+    }
 
-      $imsend .= qq~
+    $imsend .= qq~
       <tr>
             <td align="left" class="windowbg2">
                   $JSandInput
-                  <label for="subject"><b>$inmes_txt{'70'}:</b></label><br /><input type="text" name="subject" id="subject" value="$subject" size="50" maxlength="~ . ($set_subjectMaxLength + ($subject =~ /^Re: / ? 4 : 0)) . qq~" tabindex="3" style="width: 437px;"$onchangeText />
+                  <label for="subject"><b>$inmes_txt{'70'}:</b></label><br /><input type="text" name="subject" id="subject" value="$subject" size="50" maxlength="~
+      . ( $set_subjectMaxLength + ( $subject =~ /^Re: / ? 4 : 0 ) )
+      . qq~" tabindex="3" style="width: 437px;"$onchangeText />
             </td>
 
       </tr>
@@ -470,10 +555,10 @@ sub buildIMsend {
             <td class="windowbg2">
       ~;
 
-      # this is for the ubbc buttons
-      if (!$replyguest) {
-            if ($enable_ubbc && $showyabbcbutt) {
-                  $imsend .= qq~<b>$post_txt{'252'}:</b><br />
+    # this is for the ubbc buttons
+    if ( !$replyguest ) {
+        if ( $enable_ubbc && $showyabbcbutt ) {
+            $imsend .= qq~<b>$post_txt{'252'}:</b><br />
                   <div style="float: left; width: 440px;">
                   <script language="JavaScript1.2" type="text/javascript">
                   <!--
@@ -682,33 +767,40 @@ sub buildIMsend {
                   </noscript>
                   </div><div id="spell_container" style="float: left;"></div>
                   ~;
-            }
-      }
+        }
+    }
 
-      if ($replyguest) {
-            $tmpmtext =qq~<b>$post_txt{'72'}:</b> ~;
-      }
+    if ($replyguest) {
+        $tmpmtext = qq~<b>$post_txt{'72'}:</b> ~;
+    }
 
-      # set size of messagebox and text
-      if (!${$uid.$username}{'postlayout'}) { $pheight = 130; $pwidth = 425; $textsize = 10; }
-      else { ($pheight, $pwidth, $textsize, $col_row) = split(/\|/, ${$uid.$username}{'postlayout'}); }
-      if(!$textsize || $textsize < 6) { $textsize = 6; }
-      if($textsize > 16) { $textsize = 16; }
-      if($pheight > 400) { $pheight = 400; }
-      if($pheight < 130) { $pheight = 130; }
-      if($pwidth > 855) { $pwidth = 855; }
-      if($pwidth < 425) { $pwidth = 425; }
-      $mtextsize = $textsize . "pt";
-      $mheight = $pheight . "px";
-      $mwidth = $pwidth . "px";
-      $dheight = ($pheight + 12) . "px";
-      $dwidth = ($pwidth + 12) . "px";
-      $jsdragwpos = $pwidth - 425;
-      $dragwpos = ($pwidth - 425) . "px";
-      $jsdraghpos = $pheight - 130;
-      $draghpos = ($pheight - 130) . "px";
+    # set size of messagebox and text
+    if ( !${ $uid . $username }{'postlayout'} ) {
+        $pheight  = 130;
+        $pwidth   = 425;
+        $textsize = 10;
+    }
+    else {
+        ( $pheight, $pwidth, $textsize, $col_row ) =
+          split( /\|/, ${ $uid . $username }{'postlayout'} );
+    }
+    if ( !$textsize || $textsize < 6 ) { $textsize = 6; }
+    if ( $textsize > 16 ) { $textsize = 16; }
+    if ( $pheight > 400 ) { $pheight  = 400; }
+    if ( $pheight < 130 ) { $pheight  = 130; }
+    if ( $pwidth > 855 )  { $pwidth   = 855; }
+    if ( $pwidth < 425 )  { $pwidth   = 425; }
+    $mtextsize  = $textsize . "pt";
+    $mheight    = $pheight . "px";
+    $mwidth     = $pwidth . "px";
+    $dheight    = ( $pheight + 12 ) . "px";
+    $dwidth     = ( $pwidth + 12 ) . "px";
+    $jsdragwpos = $pwidth - 425;
+    $dragwpos   = ( $pwidth - 425 ) . "px";
+    $jsdraghpos = $pheight - 130;
+    $draghpos   = ( $pheight - 130 ) . "px";
 
-      $imsend .= qq~
+    $imsend .= qq~
             <div style="float: left; width: 99%;">
             <div style="float: left; text-align: left;">
             <input type="hidden" name="col_row" value="$col_row" />
@@ -877,9 +969,10 @@ sub buildIMsend {
       </tr>
       ~;
 
-      if ($img_greybox) {
-            $yyinlinestyle .= qq~<link href="$yyhtml_root/greybox/gb_styles.css" rel="stylesheet" type="text/css" />\n~;
-            $yyjavascript .= qq~
+    if ($img_greybox) {
+        $yyinlinestyle .=
+qq~<link href="$yyhtml_root/greybox/gb_styles.css" rel="stylesheet" type="text/css" />\n~;
+        $yyjavascript .= qq~
 var GB_ROOT_DIR = "$yyhtml_root/greybox/";
 // -->
 </script>
@@ -888,53 +981,60 @@ var GB_ROOT_DIR = "$yyhtml_root/greybox/";
 <script type="text/javascript" src="$yyhtml_root/greybox/gb_scripts.js"></script>
 <script type="text/javascript">
 <!--~;
-      }
+    }
 
-      if (!$replyguest) {
-            $imsend .= qq~
+    if ( !$replyguest ) {
+        $imsend .= qq~
       <tr>
             <td valign="middle" class="windowbg2">
                   <script language="JavaScript1.2" type="text/javascript">
                   <!--
             ~;
 
-            $moresmilieslist = '';
-            $more_smilie_array = '';
-            $i = 0;
-            if ($showadded == 1) {
-                  while ($SmilieURL[$i]) {
-                        if ($SmilieURL[$i] =~ /\//i) { $tmpurl = $SmilieURL[$i]; }
-                        else { $tmpurl = qq~$imagesdir/$SmilieURL[$i]~; }
-                        $moresmilieslist .= qq~                   document.write('<img src="$tmpurl" align="bottom" alt="$SmilieDescription[$i]" border="0" onclick="javascript: MoreSmilies($i);" style="cursor: pointer;" />$SmilieLinebreak[$i] ');\n~;
-                        $tmpcode = $SmilieCode[$i];
-                        $tmpcode =~ s/\&quot;/"+'"'+"/g;    #" Adding that because if not it screws up my syntax view'
-                        &FromHTML($tmpcode);
-                        $tmpcode =~ s/&#36;/\$/g;
-                        $tmpcode =~ s/&#64;/\@/g;
-                        $more_smilie_array .= qq~" $tmpcode", ~;
+        $moresmilieslist   = '';
+        $more_smilie_array = '';
+        $i                 = 0;
+        if ( $showadded == 1 ) {
+            while ( $SmilieURL[$i] ) {
+                if ( $SmilieURL[$i] =~ /\//i ) { $tmpurl = $SmilieURL[$i]; }
+                else { $tmpurl = qq~$imagesdir/$SmilieURL[$i]~; }
+                $moresmilieslist .=
+qq~                   document.write('<img src="$tmpurl" align="bottom" alt="$SmilieDescription[$i]" border="0" onclick="javascript: MoreSmilies($i);" style="cursor: pointer;" />$SmilieLinebreak[$i] ');\n~;
+                $tmpcode = $SmilieCode[$i];
+                $tmpcode =~ s/\&quot;/"+'"'+"/g
+                  ;   #" Adding that because if not it screws up my syntax view'
+                &FromHTML($tmpcode);
+                $tmpcode =~ s/&#36;/\$/g;
+                $tmpcode =~ s/&#64;/\@/g;
+                $more_smilie_array .= qq~" $tmpcode", ~;
+                $i++;
+            }
+        }
+
+        if ( $showsmdir == 1 ) {
+            opendir( DIR, "$smiliesdir" );
+            @contents = readdir(DIR);
+            closedir(DIR);
+            foreach $line ( sort { uc($a) cmp uc($b) } @contents ) {
+                ( $name, $extension ) = split( /\./, $line );
+                if (   $extension =~ /gif/i
+                    || $extension =~ /jpg/i
+                    || $extension =~ /jpeg/i
+                    || $extension =~ /png/i )
+                {
+                    if ( $line !~ /banner/i ) {
+                        $moresmilieslist .=
+qq~                   document.write('<img src="$smiliesurl/$line" align="bottom" alt="$name" border="0" onclick="javascript: MoreSmilies($i);" style="cursor: pointer; cursor: hand;" />$SmilieLinebreak[$i] ');\n~;
+                        $more_smilie_array .= qq~" [smiley=$line]", ~;
                         $i++;
-                  }
+                    }
+                }
             }
+        }
 
-            if ($showsmdir == 1) {
-                  opendir(DIR, "$smiliesdir");
-                  @contents = readdir(DIR);
-                  closedir(DIR);
-                  foreach $line (sort { uc($a) cmp uc($b) } @contents) {
-                        ($name, $extension) = split(/\./, $line);
-                        if ($extension =~ /gif/i || $extension =~ /jpg/i || $extension =~ /jpeg/i || $extension =~ /png/i) {
-                              if ($line !~ /banner/i) {
-                                    $moresmilieslist .= qq~                   document.write('<img src="$smiliesurl/$line" align="bottom" alt="$name" border="0" onclick="javascript: MoreSmilies($i);" style="cursor: pointer; cursor: hand;" />$SmilieLinebreak[$i] ');\n~;
-                                    $more_smilie_array .= qq~" [smiley=$line]", ~;
-                                    $i++;
-                              }
-                        }
-                  }
-            }
+        $more_smilie_array .= qq~""~;
 
-            $more_smilie_array .= qq~""~;
-
-            $imsend .= qq~
+        $imsend .= qq~
                         moresmiliecode = new Array($more_smilie_array)
                         function MoreSmilies(i) {
                               AddTxt=moresmiliecode[i];
@@ -961,21 +1061,24 @@ var GB_ROOT_DIR = "$yyhtml_root/greybox/";
                   //-->
                   </script>\n~;
 
-            if (($showadded == 3 && $showsmdir != 2) || ($showsmdir == 3 && $showadded != 2)) {
-                  $imsend .= qq~
+        if (   ( $showadded == 3 && $showsmdir != 2 )
+            || ( $showsmdir == 3 && $showadded != 2 ) )
+        {
+            $imsend .= qq~
                   <a href="javascript: smiliewin();">$post_smiltxt{'1'}</a>~;
-            }
+        }
 
-            # SpellChecker start
-            if ($enable_spell_check) {
-                  $yyinlinestyle .= qq~<link href="$yyhtml_root/googiespell/googiespell.css" rel="stylesheet" type="text/css" />
+        # SpellChecker start
+        if ($enable_spell_check) {
+            $yyinlinestyle .=
+qq~<link href="$yyhtml_root/googiespell/googiespell.css" rel="stylesheet" type="text/css" />
 
 <script type="text/javascript" src="$yyhtml_root/AJS.js"></script>
 <script type="text/javascript" src="$yyhtml_root/googiespell/googiespell.js"></script>
 <script type="text/javascript" src="$yyhtml_root/googiespell/cookiesupport.js"></script>~;
-                  my $userdefaultlang = (split(/-/, $abbr_lang))[0];
-                  $userdefaultlang ||= 'en';
-                  $imsend .= qq~
+            my $userdefaultlang = ( split( /-/, $abbr_lang ) )[0];
+            $userdefaultlang ||= 'en';
+            $imsend .= qq~
                   <script type="text/javascript">
                   <!--
                         GOOGIE_DEFAULT_LANG = '$userdefaultlang';
@@ -990,38 +1093,42 @@ var GB_ROOT_DIR = "$yyhtml_root/greybox/";
                         googie1.decorateTextarea("message");
                   //-->
                   </script>~;
-            }
-            # SpellChecker end
+        }
 
-            $imsend .= qq~
+        # SpellChecker end
+
+        $imsend .= qq~
                   <noscript>
                         <span class="small">$maintxt{'noscript'}</span>
                   </noscript>
             </td>
       </tr>~;
-      }
+    }
 
-      $imsend .= qq~
+    $imsend .= qq~
       <tr>
             <td class="windowbg">~;
 
-      if ($INFO{'quote'} || $INFO{'reply'} || $FORM{'reply'}) { # if this is a reply, need to pass the reply # forward
-            $imsend .= qq~
+    if ( $INFO{'quote'} || $INFO{'reply'} || $FORM{'reply'} )
+    {    # if this is a reply, need to pass the reply # forward
+        $imsend .= qq~
                   <input type="hidden" name="reply" id="reply" value="$INFO{'quote'}$INFO{'reply'}$FORM{'reply'}" />~;
-      }
+    }
 
-      if (!$replyguest) {
-            $imsend .= qq~
+    if ( !$replyguest ) {
+        $imsend .= qq~
                   <input type="checkbox" name="ns" id="ns" value="NS"$nscheck /> <label for="ns"><span class="small">$post_txt{'277'}</span></label><br />~;
-            if ($FORM{'draftid'} || $INFO{'caller'} == 4) {
-                  $imsend .= qq~
-                  <input type="checkbox" name="draftleave" id="draftleave" value="1" /> <span class="small"> $post_txt{'draftleave'}</span><br />~;
-            }
+        if ( $FORM{'draftid'} || $INFO{'caller'} == 4 ) {
             $imsend .= qq~
-                  <input type="checkbox" name="dontstoreinoutbox" id="dontstoreinoutbox" value="1"~ . ($FORM{'dontstoreinoutbox'} ? ' checked="checked"' : '') . qq~ /> <label for="dontstoreinoutbox"><span class="small">$inmes_txt{'320'}</span></label><br />~;
-      }
+                  <input type="checkbox" name="draftleave" id="draftleave" value="1" /> <span class="small"> $post_txt{'draftleave'}</span><br />~;
+        }
+        $imsend .= qq~
+                  <input type="checkbox" name="dontstoreinoutbox" id="dontstoreinoutbox" value="1"~
+          . ( $FORM{'dontstoreinoutbox'} ? ' checked="checked"' : '' )
+          . qq~ /> <label for="dontstoreinoutbox"><span class="small">$inmes_txt{'320'}</span></label><br />~;
+    }
 
-      $imsend .= qq~
+    $imsend .= qq~
                   <div id="enable_iecopy" style="display: none;">
                   <input type="checkbox" name="iecopy" id="iecopy"$iecopycheck /> <span class="small"> $post_txt{'iecopycheck'}</span>
                   </div>
@@ -1036,13 +1143,14 @@ var GB_ROOT_DIR = "$yyhtml_root/greybox/";
       </tr>
       ~;
 
-      #these are the buttons to submit
-      my $sendBMessFlag;
-      if ($sendBMess || $isBMess) {
-            $sendBMessFlag = qq~<input type="hidden" name="isBMess" id="isBMess" value="yes" />~;
-      }
+    #these are the buttons to submit
+    my $sendBMessFlag;
+    if ( $sendBMess || $isBMess ) {
+        $sendBMessFlag =
+          qq~<input type="hidden" name="isBMess" id="isBMess" value="yes" />~;
+    }
 
-      $imsend .= qq~
+    $imsend .= qq~
       <tr>
             <td align="center" class="titlebg">
                   $hidestatus
@@ -1050,8 +1158,8 @@ var GB_ROOT_DIR = "$yyhtml_root/greybox/";
                   <br />
                   <input type="submit" name="$post" value="$submittxt" accesskey="s" tabindex="5" class="button" />~;
 
-      if ($speedpostdetection) {
-            $imsend .= qq~
+    if ($speedpostdetection) {
+        $imsend .= qq~
                   <script language="JavaScript1.2" type="text/javascript">
                   <!--
                   var postdelay = $min_post_speed*1000;
@@ -1067,56 +1175,64 @@ var GB_ROOT_DIR = "$yyhtml_root/greybox/";
                   }
                   //-->
                   </script>~;
-      }
+    }
 
-      my %accesskey;
-      if (!$replyguest) {
-            $imsend .= qq~&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<input type="submit" name="$draft" id="$draft" value="$inmes_txt{'savedraft'}" accesskey="d" tabindex="7" class="button" />~;
-            $accesskey{'MSIE_Safari'}     = $post_txt{'329b'};
-            $accesskey{'FireFox'}         = $post_txt{'330b'};
-            $accesskey{'Browsers_on_Mac'} = $post_txt{'331b'};
-            if ((!$enable_PMcontrols && $enable_PMprev) || ($enable_PMcontrols && ${$uid.$username}{'pmmessprev'})) {
-                  $imsend .= qq~&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<input type="submit" name="$preview" id="$preview" value="$inmes_txt{'507'}" accesskey="p" tabindex="6" class="button" />~;
-                  $accesskey{'MSIE_Safari'}     = $post_txt{'329c'};
-                  $accesskey{'FireFox'}         = $post_txt{'330c'};
-                  $accesskey{'Browsers_on_Mac'} = $post_txt{'331c'};
-            }
-      }
+    my %accesskey;
+    if ( !$replyguest ) {
+        $imsend .=
+qq~&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<input type="submit" name="$draft" id="$draft" value="$inmes_txt{'savedraft'}" accesskey="d" tabindex="7" class="button" />~;
+        $accesskey{'MSIE_Safari'}     = $post_txt{'329b'};
+        $accesskey{'FireFox'}         = $post_txt{'330b'};
+        $accesskey{'Browsers_on_Mac'} = $post_txt{'331b'};
+        if (   ( !$enable_PMcontrols && $enable_PMprev )
+            || ( $enable_PMcontrols && ${ $uid . $username }{'pmmessprev'} ) )
+        {
+            $imsend .=
+qq~&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<input type="submit" name="$preview" id="$preview" value="$inmes_txt{'507'}" accesskey="p" tabindex="6" class="button" />~;
+            $accesskey{'MSIE_Safari'}     = $post_txt{'329c'};
+            $accesskey{'FireFox'}         = $post_txt{'330c'};
+            $accesskey{'Browsers_on_Mac'} = $post_txt{'331c'};
+        }
+    }
 
-      $smilie_url_array  = "";
-      $smilie_code_array = "";
-      $i = 0;
-      if ($showadded eq 2) {
-            while ($SmilieURL[$i]) {
-                  if ($SmilieURL[$i] =~ /\//i) { $tmpurl = $SmilieURL[$i]; }
-                  else { $tmpurl = qq~$defaultimagesdir/$SmilieURL[$i]~; }
-                  $smilie_url_array .= qq~"$tmpurl", ~;
-                  $tmpcode = $SmilieCode[$i];
-                  $tmpcode =~ s/\&quot;/"+'"'+"/g; # "'
-                  &FromHTML($tmpcode);
-                  $tmpcode =~ s/&#36;/\$/g;
-                  $tmpcode =~ s/&#64;/\@/g;
-                  $smilie_code_array .= qq~" $tmpcode", ~;
-                  $i++;
+    $smilie_url_array  = "";
+    $smilie_code_array = "";
+    $i                 = 0;
+    if ( $showadded eq 2 ) {
+        while ( $SmilieURL[$i] ) {
+            if ( $SmilieURL[$i] =~ /\//i ) { $tmpurl = $SmilieURL[$i]; }
+            else { $tmpurl = qq~$defaultimagesdir/$SmilieURL[$i]~; }
+            $smilie_url_array .= qq~"$tmpurl", ~;
+            $tmpcode = $SmilieCode[$i];
+            $tmpcode =~ s/\&quot;/"+'"'+"/g;    # "'
+            &FromHTML($tmpcode);
+            $tmpcode =~ s/&#36;/\$/g;
+            $tmpcode =~ s/&#64;/\@/g;
+            $smilie_code_array .= qq~" $tmpcode", ~;
+            $i++;
+        }
+    }
+    if ( $showsmdir eq 2 ) {
+        opendir( DIR, "$smiliesdir" );
+        @contents = readdir(DIR);
+        closedir(DIR);
+        foreach $line ( sort { uc($a) cmp uc($b) } @contents ) {
+            ( $name, $extension ) = split( /\./, $line );
+            if (   $extension =~ /gif/i
+                || $extension =~ /jpg/i
+                || $extension =~ /jpeg/i
+                || $extension =~ /png/i )
+            {
+                if ( $line !~ /banner/i ) {
+                    $smilie_url_array  .= qq~"$smiliesurl/$line", ~;
+                    $smilie_code_array .= qq~" [smiley=$line]", ~;
+                    $i++;
+                }
             }
-      }
-      if ($showsmdir eq 2) {
-            opendir(DIR, "$smiliesdir");
-            @contents = readdir(DIR);
-            closedir(DIR);
-            foreach $line (sort { uc($a) cmp uc($b) } @contents) {
-                  ($name, $extension) = split(/\./, $line);
-                  if ($extension =~ /gif/i || $extension =~ /jpg/i || $extension =~ /jpeg/i || $extension =~ /png/i) {
-                        if ($line !~ /banner/i) {
-                              $smilie_url_array  .= qq~"$smiliesurl/$line", ~;
-                              $smilie_code_array .= qq~" [smiley=$line]", ~;
-                              $i++;
-                        }
-                  }
-            }
-      }
+        }
+    }
 
-      $imsend .= qq~
+    $imsend .= qq~
             <script type="text/javascript" language="JavaScript">
             <!--
                   if (/Opera/.test(navigator.userAgent) == false) {
@@ -1141,8 +1257,15 @@ var GB_ROOT_DIR = "$yyhtml_root/greybox/";
                   var autoprev = false;
                   var topicfirst = true;\n~;
 
-      if (((!$enable_PMcontrols && $enable_PMActprev) || ($enable_PMcontrols && ${$uid.$username}{'pmactprev'})) && !$replyguest) {
-            $imsend .= qq~
+    if (
+        (
+               ( !$enable_PMcontrols && $enable_PMActprev )
+            || ( $enable_PMcontrols && ${ $uid . $username }{'pmactprev'} )
+        )
+        && !$replyguest
+      )
+    {
+        $imsend .= qq~
                   post_txt_807 = "$post_txt{'807'}";
 
                   function enabPrev() {
@@ -1171,9 +1294,9 @@ var GB_ROOT_DIR = "$yyhtml_root/greybox/";
                         }
                         calcCharLeft();
                   }\n~;
-      }
+    }
 
-      $imsend .= qq~
+    $imsend .= qq~
                   function calcCharLeft() {
                         clipped = false;
                         maxLength = $MaxMessLen;
@@ -1263,8 +1386,15 @@ var GB_ROOT_DIR = "$yyhtml_root/greybox/";
                         }
                   }\n~;
 
-      if (((!$enable_PMcontrols && $enable_PMActprev) || ($enable_PMcontrols && ${$uid.$username}{'pmactprev'})) && !$replyguest) {
-            $imsend .= qq~
+    if (
+        (
+               ( !$enable_PMcontrols && $enable_PMActprev )
+            || ( $enable_PMcontrols && ${ $uid . $username }{'pmactprev'} )
+        )
+        && !$replyguest
+      )
+    {
+        $imsend .= qq~
                   var visikon = '';
                   function updatTopic() {
                         topicfirst = false;
@@ -1284,10 +1414,10 @@ var GB_ROOT_DIR = "$yyhtml_root/greybox/";
                         document.getElementById("savetopic").innerHTML=visikon+htmltopic;
                         //document.postmodify.message.focus();
                   }\n~;
-      }
+    }
 
-      if (!$replyguest) {
-            $imsend .= qq~
+    if ( !$replyguest ) {
+        $imsend .= qq~
                   function showtpstatus() {
                         var theimg = '$pmicon';
                         var objIconSelected = document.postmodify.status[document.postmodify.status.selectedIndex].value;
@@ -1298,9 +1428,9 @@ var GB_ROOT_DIR = "$yyhtml_root/greybox/";
                         if (autoprev == true) updatTopic();
                   }
                   showtpstatus();\n~;
-      }
+    }
 
-      $imsend .= qq~
+    $imsend .= qq~
                   tick();
 
                   // -->
@@ -1309,510 +1439,659 @@ var GB_ROOT_DIR = "$yyhtml_root/greybox/";
             </td>
       </tr>\n~;
 
-      if ($action eq 'modify' || $action eq 'modify2') {
-            $displayname = $mename;
-      } else {
-            $displayname = ${$uid.$username}{'realname'};
-      }
+    if ( $action eq 'modify' || $action eq 'modify2' ) {
+        $displayname = $mename;
+    }
+    else {
+        $displayname = ${ $uid . $username }{'realname'};
+    }
 
-      require "$templatesdir/$usedisplay/Display.template";
+    require "$templatesdir/$usedisplay/Display.template";
 
-      foreach (@months) { $jsmonths .= qq~'$_',~; }
-      $jsmonths =~ s~\,\Z~~;
-      $jstimeselected = ${$uid.$username}{'timeselect'} || $timeselected;
+    foreach (@months) { $jsmonths .= qq~'$_',~; }
+    $jsmonths =~ s~\,\Z~~;
+    $jstimeselected = ${ $uid . $username }{'timeselect'} || $timeselected;
 
-      ##########  end post code
+    ##########  end post code
 }
 
 ##  process and send the IM to whomever
 sub IMsendMessage {
-      # This is only for update, when comming from YaBB lower or equal version 2.2.3
-      # I think it can be deleted around version 2.4.0 without causing mayor issues (deti).
-      if ($enable_notifications eq '') { $enable_notifications = $enable_notification ? 3 : 0; }
-      # End update workaround
 
-      &LoadLanguage('Post');
-      &LoadLanguage('InstantMessage');
-      ##  load error strings
-      &LoadLanguage('Error');
+# This is only for update, when comming from YaBB lower or equal version 2.2.3
+# I think it can be deleted around version 2.4.0 without causing mayor issues (deti).
+    if ( $enable_notifications eq '' ) {
+        $enable_notifications = $enable_notification ? 3 : 0;
+    }
 
-      ##  sorry - no guests
-      if ($iamguest) { &fatal_error("im_members_only"); }
+    # End update workaround
 
-      my (@ignore, $igname, $messageid, $subject, $message, @recipient, $ignored, $memnums);
-      $isBMess = $FORM{'isBMess'};
+    &LoadLanguage('Post');
+    &LoadLanguage('InstantMessage');
+    ##  load error strings
+    &LoadLanguage('Error');
 
-      # set size of messagebox and text
-      ${$uid.$username}{'postlayout'} = qq~$FORM{'messageheight'}|$FORM{'messagewidth'}|$FORM{'txtsize'}|$FORM{'col_row'}~;
+    ##  sorry - no guests
+    if ($iamguest) { &fatal_error("im_members_only"); }
 
-      # receipts for IM are now handled by "toshow" only, so we need to switch to the right
-      # test for no recipient. also switch on flag to stop us going back to the form all the time
-      # if there is only the one (intended) recipient, 'to' must contain the name
-      if ((!$FORM{'toshow'} && !$INFO{'to'}) && !$FORM{'draft'}) { $error = $error_txt{'no_recipient'}; }
-      $toshow = $FORM{'toshow'} || $INFO{'to'};
-      # if there are several intended - can be one of course ;)
+    my (
+        @ignore,  $igname,    $messageid, $subject,
+        $message, @recipient, $ignored,   $memnums
+    );
+    $isBMess = $FORM{'isBMess'};
 
-      $subject = $FORM{'subject'};
-      $subject =~ s/^\s+|\s+$//g;
+    # set size of messagebox and text
+    ${ $uid . $username }{'postlayout'} =
+qq~$FORM{'messageheight'}|$FORM{'messagewidth'}|$FORM{'txtsize'}|$FORM{'col_row'}~;
 
-      $message = $FORM{'message'};
-      $message =~ s/^\s+|\s+$//g;
+# receipts for IM are now handled by "toshow" only, so we need to switch to the right
+# test for no recipient. also switch on flag to stop us going back to the form all the time
+# if there is only the one (intended) recipient, 'to' must contain the name
+    if ( ( !$FORM{'toshow'} && !$INFO{'to'} ) && !$FORM{'draft'} ) {
+        $error = $error_txt{'no_recipient'};
+    }
+    $toshow = $FORM{'toshow'} || $INFO{'to'};
 
-      # no subject/no message are bad!
-      $error = $error_txt{'no_subject'} if !$subject;
-      $error = $error_txt{'no_message'} if !$message;
+    # if there are several intended - can be one of course ;)
 
-      &FromChars($subject);
-      &FromChars($message);
+    $subject = $FORM{'subject'};
+    $subject =~ s/^\s+|\s+$//g;
 
-      &ToHTML($subject);
-      &ToHTML($message);
+    $message = $FORM{'message'};
+    $message =~ s/^\s+|\s+$//g;
 
-      # manage line returns and tabs
-      $subject =~ s/\s+/ /g;
-      $message =~ s~\n~<br />~g;
-      $message =~ s~\t~ \&nbsp; \&nbsp; \&nbsp;~g;
+    # no subject/no message are bad!
+    $error = $error_txt{'no_subject'} if !$subject;
+    $error = $error_txt{'no_message'} if !$message;
 
-      # Check Length
-      $convertstr = $subject;
-      $convertcut = $set_subjectMaxLength + ($subject =~ /^Re: / ? 4 : 0);
-      &CountChars;
-      $subject = $convertstr;
+    &FromChars($subject);
+    &FromChars($message);
 
-      $convertstr = $message;
-      $convertcut = $MaxMessLen;
-      &CountChars;
-      if ($cliped) { $error = "$inmes_txt{'536'} " . (length($message) - length($convertstr)) . " $inmes_txt{'537'}"; }
-      $message = $convertstr;
+    &ToHTML($subject);
+    &ToHTML($message);
 
-      if ($FORM{'ns'} eq 'NS') { $message .= "#nosmileys"; }
+    # manage line returns and tabs
+    $subject =~ s/\s+/ /g;
+    $message =~ s~\n~<br />~g;
+    $message =~ s~\t~ \&nbsp; \&nbsp; \&nbsp;~g;
 
-      if ($error) {
-            $IM_box = $inmes_txt{'148'};
-            $FORM{'previewim'} = 1;
-            &IMPost;
-            &buildIMsend;
-            return;
-      }
+    # Check Length
+    $convertstr = $subject;
+    $convertcut = $set_subjectMaxLength + ( $subject =~ /^Re: / ? 4 : 0 );
+    &CountChars;
+    $subject = $convertstr;
 
-      undef @multiple;
-      fopen(MEMLIST, "$memberdir/memberlist.txt");
-      my @memberlist = <MEMLIST>;
-      my $allmems = @memberlist;
-      fclose(MEMLIST);
+    $convertstr = $message;
+    $convertcut = $MaxMessLen;
+    &CountChars;
+    if ($cliped) {
+        $error =
+            "$inmes_txt{'536'} "
+          . ( length($message) - length($convertstr) )
+          . " $inmes_txt{'537'}";
+    }
+    $message = $convertstr;
 
-      &ProcIMrecs;
+    if ( $FORM{'ns'} eq 'NS' ) { $message .= "#nosmileys"; }
 
-      $memnums = $#multiple + 1;
-      ## no need to check for spam if its a broadcast, as this only creates the one post
-      if ($imspam ne "off" && !$isBMess) {
-            $checkspam = 100 / $allmems * $memnums;
-            if ($memnums == 1) { $checkspam = 0; }
-            if ($checkspam > $imspam && !$iamadmin) { &fatal_error("im_spam_alert"); }
-      }
+    if ($error) {
+        $IM_box = $inmes_txt{'148'};
+        $FORM{'previewim'} = 1;
+        &IMPost;
+        &buildIMsend;
+        return;
+    }
 
-      # go through each member in list
-      # add to each msg (inbox) but only one to outbox
-      # Create unique Message ID
-      $messageid = &getnewid;
-      $actlang = $language;
-      my $UserTo;
-      if (!$FORM{'draft'} && !$isBMess && !$replyguest) {
-            foreach $UserTo (@allto) {
-                  $addnr++;
-                  chomp $UserTo;
-                  my($status, $UserTo) = split(/:/, $UserTo);
-                  my $ignored = 0;
-                  $UserTo =~ s/\A\s+//;
-                  $UserTo =~ s/\s+\Z//;
-                  $UserTo =~ s/[^0-9A-Za-z#%+,-\.@^_]//g;
+    undef @multiple;
+    fopen( MEMLIST, "$memberdir/memberlist.txt" );
+    my @memberlist = <MEMLIST>;
+    my $allmems    = @memberlist;
+    fclose(MEMLIST);
 
-                  # Check Ignore-List, unless sender is FA
-                  &LoadUser($UserTo);
-                  if (!$isBMess) {
-                        if (${$uid.$UserTo}{'im_ignorelist'} && !$iamadmin && !$iamgmod) {
-                              # Build Ignore-List
-                              @ignore = split(/\|/, ${$uid.$UserTo}{'im_ignorelist'});
+    &ProcIMrecs;
 
-                              # If User is on Recipient's Ignore-List, show Error Message
-                              foreach $igname (@ignore) {
-                                    # adds ignored user's name to array which error list will be built from later
-                                    chomp $igname;
-                                    if ($igname eq $username) { push(@nouser, $UserTo); $ignored = 1; }
-                                    if ($igname eq '*') { push(@nouser, "$inmes_txt{'761'} $UserTo $inmes_txt{'762'};"); $ignored = 1; }
-                              }
+    $memnums = $#multiple + 1;
+    ## no need to check for spam if its a broadcast, as this only creates the one post
+    if ( $imspam ne "off" && !$isBMess ) {
+        $checkspam = 100 / $allmems * $memnums;
+        if ( $memnums == 1 ) { $checkspam = 0; }
+        if ( $checkspam > $imspam && !$iamadmin ) {
+            &fatal_error("im_spam_alert");
+        }
+    }
+
+    # go through each member in list
+    # add to each msg (inbox) but only one to outbox
+    # Create unique Message ID
+    $messageid = &getnewid;
+    $actlang   = $language;
+    my $UserTo;
+    if ( !$FORM{'draft'} && !$isBMess && !$replyguest ) {
+        foreach $UserTo (@allto) {
+            $addnr++;
+            chomp $UserTo;
+            my ( $status, $UserTo ) = split( /:/, $UserTo );
+            my $ignored = 0;
+            $UserTo =~ s/\A\s+//;
+            $UserTo =~ s/\s+\Z//;
+            $UserTo =~ s/[^0-9A-Za-z#%+,-\.@^_]//g;
+
+            # Check Ignore-List, unless sender is FA
+            &LoadUser($UserTo);
+            if ( !$isBMess ) {
+                if (   ${ $uid . $UserTo }{'im_ignorelist'}
+                    && !$iamadmin
+                    && !$iamgmod )
+                {
+
+                    # Build Ignore-List
+                    @ignore =
+                      split( /\|/, ${ $uid . $UserTo }{'im_ignorelist'} );
+
+                    # If User is on Recipient's Ignore-List, show Error Message
+                    foreach $igname (@ignore) {
+
+   # adds ignored user's name to array which error list will be built from later
+                        chomp $igname;
+                        if ( $igname eq $username ) {
+                            push( @nouser, $UserTo );
+                            $ignored = 1;
                         }
-                  }
-                  ## check and see if 1) username is marked 'away' 2) they left a message 3) you haven't already had an auto-reply
-                  my $sendAutoReply = 1;
-                  if (${$uid.$UserTo}{'offlinestatus'} eq 'away' && ${$uid.$UserTo}{'awayreply'} ne '' && ${$uid.$UserTo}{'awaysubj'} ne '') {
-                        if (${$uid.$UserTo}{'awayreplysent'} eq '') {
-                              ${$uid.$UserTo}{'awayreplysent'} = $username;
-                              &UserAccount($UserTo, 'update');
-                        } else {
-                              foreach my $replyListName (split(/,/ ,${$uid.$UserTo}{'awayreplysent'})) {
-                                    if ($replyListName eq $username) {
-                                          $sendAutoReply = 0;
-                                          last;
-                                    }
-                              }
-                              if ($sendAutoReply) {
-                                    ${$uid.$UserTo}{'awayreplysent'} .= qq~,$username~;
-                                    &UserAccount($UserTo, 'update');
-                              }
+                        if ( $igname eq '*' ) {
+                            push( @nouser,
+                                "$inmes_txt{'761'} $UserTo $inmes_txt{'762'};"
+                            );
+                            $ignored = 1;
                         }
-                  } else { $sendAutoReply = 0; }
-
-                  if (!-e ("$memberdir/$UserTo.vars")) {
-                        # adds invalid user's name to array which error list will be built from later
-                        push(@nouser, $UserTo);
-                        $ignored = 1;
-                  }
-
-                  if (!$ignored) {
-                        # Send message to user
-                        fopen(INBOX, "$memberdir/$UserTo.msg");
-                        my @inmessages = <INBOX>;
-                        fclose(INBOX);
-                        fopen(INBOX, ">$memberdir/$UserTo.msg");
-                        print INBOX "$messageid|$username|$FORM{'toshow'}|$FORM{'toshowcc'}|$FORM{'toshowbcc'}|$subject|$date|$message|$messageid|0|$ENV{'REMOTE_ADDR'}|$FORM{'status'}|u||\n";
-                        print INBOX @inmessages;
-                        fclose(INBOX);
-
-                        # we've added the msg to the inbox, now update the ims file
-                        &updateIMS($UserTo, $messageid, 'messagein');
-                        ## if we need to drop the 'away' reply in....
-                        if ($sendAutoReply) {
-                              my $rmessageid = &getnewid;
-                              fopen(INBOX, "$memberdir/$username.msg");
-                              my @myinmessages = <INBOX>;
-                              fclose(INBOX);
-                              fopen(INBOX, ">$memberdir/$username.msg");
-                              print INBOX "$rmessageid|$UserTo|$username|||${$uid.$UserTo}{'awaysubj'}|$date|${$uid.$UserTo}{'awayreply'}|$messageid|1|$ENV{'REMOTE_ADDR'}|s|u||\n";
-                              print INBOX @myinmessages;
-                              fclose(INBOX);
-                        }
-                        ## relocated sender msg out of the loop
-
-                        # Send notification (Will only work if Admin has allowed the Email Notification)
-                        if (${$uid.$UserTo}{'notify_me'} > 1 && $enable_notifications > 1) {
-                              require "$sourcedir/Mailer.pl";
-                              $language = ${$uid.$UserTo}{'language'};
-                              &LoadLanguage('Email');
-                              &LoadLanguage('Notify');
-                              &LoadCensorList;
-                              $useremail = ${$uid.$UserTo}{'email'};
-                              $useremail =~ s/[\n\r]//g;
-                              if ($useremail ne '') {
-                                    my $msubject = $subject ? $subject : $inmes_txt{'767'};
-                                    $fromname = ${$uid.$username}{'realname'};
-                                    &FromHTML($msubject);
-                                    &ToChars($msubject);
-                                    $msubject = &Censor($msubject);
-                                    my $chmessage = $message;
-                                    &FromHTML($chmessage);
-                                    &ToChars($chmessage);
-                                    $chmessage = &Censor($chmessage);
-                                    $chmessage =~ s~<br.*?>~\n~gi;
-                                    $chmessage =~ s~\[b\](.*?)\[/b\]~*$1*~isg;
-                                    $chmessage =~ s~\[i\](.*?)\[/i\]~/$1/~isg;
-                                    $chmessage =~ s~\[u\](.*?)\[/u\]~_$1_~isg;
-                                    $chmessage =~ s~\[.*?\]~~g;
-                                    &sendmail($useremail, $notify_txt{'145'}, &template_email($privatemessagenotificationemail, {'sender' => $fromname, 'subject' => $msubject, 'message' => $chmessage}), '', $emailcharset);
-                              }
-                        }
-                  }     #end add PM to outbox
-            }     #end foreach loop
-            if ($#allto == $#nouser) {
-                  my $badusers;
-                  foreach my $baduser (@nouser) {
-                        &LoadUser($baduser);
-                        $badusers .= qq~<a href="$scripturl?action=viewprofile;username=$useraccount{$baduser}">${$uid.$baduser}{'realname'}</a>, ~;
-                  }
-                  $badusers =~ s/, \Z//;
-                  &fatal_error('im_bad_users', $badusers);
+                    }
+                }
             }
-      }
-
-      ##  moved sender's reply marker here, open the sender's inbox and mark 'replied'
-      if (!$FORM{'draft'} && $isBMess) {
-            fopen(INBOX, "$memberdir/broadcast.messages");
-            my @inmessages = <INBOX>;
-            fclose(INBOX);
-            fopen(INBOX, ">$memberdir/broadcast.messages");
-            print INBOX "$messageid|$username|$FORM{'toshow'}|||$subject|$date|$message|$messageid|0|$ENV{'REMOTE_ADDR'}|$FORM{'status'}b|u||\n";
-            print INBOX @inmessages;
-            fclose(INBOX);
-      }
-
-      if ($FORM{'reply'} && $FORM{'info'}) { # mark msg replied
-            &updateMessageFlag($username, $FORM{'info'}, 'msg', '', 'r');
-      }
-
-      ## this now outside the foreach, to allow just one write in the outbox
-      # Add message to outbox, read outbox
-
-      @outmessages = ();
-      my $savetofile = 'outbox';
-      if ($FORM{'draft'}) { $savetofile = 'imdraft'; }
-      fopen(OUTBOX, "$memberdir/$username.$savetofile");
-      @outmessages = <OUTBOX>;
-      fclose(OUTBOX);
-
-      # add the PM to the outbox
-      # the sep users now live together
-      my $messFlag = '';
-      if ($isBMess) { $messFlag = 'b'; }
-      if ($replyguest) {
-            $messFlag = 'gr';
-
-            $FORM{'toguest'} =~ s/ /%20/g;
-            $FORM{'toshow'} = $FORM{'toguest'} . ' ' . $FORM{'guestemail'};
-            $FORM{'toshow'} =~ s/[\n\r]//g;
-            $FORM{'guestemail'} =~ s/[\n\r]//g;
-
-            $fromname = ${$uid.$username}{'realname'};
-
-            my $msubject = $subject;
-            &FromHTML($msubject);
-            &ToChars($msubject);
-
-            $chmessage = $message;
-            &FromHTML($chmessage);
-            &ToChars($chmessage);
-            $chmessage =~ s~<br.*?>~\n~gi;
-            $chmessage =~ s~\[b\](.*?)\[/b\]~*$1*~isg;
-            $chmessage =~ s~\[i\](.*?)\[/i\]~/$1/~isg;
-            $chmessage =~ s~\[u\](.*?)\[/u\]~_$1_~isg;
-            $chmessage =~ s~\[.*?\]~~g;
-            $chmessage =~ s/\r(?=\n*)//g;
-
-            require "$sourcedir/Mailer.pl";
-            &sendmail($FORM{'guestemail'}, $msubject, $chmessage, ${$uid.$username}{'email'});
-      }
-
-      if (!$FORM{'dontstoreinoutbox'} || $FORM{'draft'}) {
-            fopen(OUTBOX, "+>$memberdir/$username.$savetofile") || &fatal_error('cannot_open',"+>$memberdir/$username.$savetofile",1);
-            ## all but drafts being resaved just get added to their file
-            if (!$FORM{'draft'} || ($FORM{'draft'} && !$FORM{'draftid'})) {
-                  print OUTBOX "$messageid|$username|$FORM{'toshow'}|$FORM{'toshowcc'}|$FORM{'toshowbcc'}|$subject|$date|$message|$messageid|$FORM{'reply'}|$ENV{'REMOTE_ADDR'}|$FORM{'status'}$messFlag|||\n";
-                  print OUTBOX @outmessages;
-
-            } elsif ($FORM{'draft'} && $FORM{'draftid'}) {
-                  ## resaving draft - find draft message id and amend the entry
-                  foreach my $outmessage (@outmessages) {
-                        chomp $outmessage;
-                        if ((split /\|/, $outmessage)[0] != $FORM{'draftid'}) {
-                              print OUTBOX "$outmessage\n";
-                        } else {
-                              print OUTBOX "$messageid|$username|$FORM{'toshow'}|$FORM{'toshowcc'}|$FORM{'toshowbcc'}|$subject|$date|$message|$messageid|$FORM{'reply'}|$ENV{'REMOTE_ADDR'}|$FORM{'status'}$messFlag|||\n";
+            ## check and see if 1) username is marked 'away' 2) they left a message 3) you haven't already had an auto-reply
+            my $sendAutoReply = 1;
+            if (   ${ $uid . $UserTo }{'offlinestatus'} eq 'away'
+                && ${ $uid . $UserTo }{'awayreply'} ne ''
+                && ${ $uid . $UserTo }{'awaysubj'}  ne '' )
+            {
+                if ( ${ $uid . $UserTo }{'awayreplysent'} eq '' ) {
+                    ${ $uid . $UserTo }{'awayreplysent'} = $username;
+                    &UserAccount( $UserTo, 'update' );
+                }
+                else {
+                    foreach my $replyListName (
+                        split( /,/, ${ $uid . $UserTo }{'awayreplysent'} ) )
+                    {
+                        if ( $replyListName eq $username ) {
+                            $sendAutoReply = 0;
+                            last;
                         }
-                  }
+                    }
+                    if ($sendAutoReply) {
+                        ${ $uid . $UserTo }{'awayreplysent'} .= qq~,$username~;
+                        &UserAccount( $UserTo, 'update' );
+                    }
+                }
             }
-            fclose(OUTBOX);
+            else { $sendAutoReply = 0; }
 
-            ## pdate ims for sent
-            if (!$FORM{'draft'}) { &updateIMS($username, $messageid, 'messageout'); }
-            elsif (!$FORM{'draftid'}) { &updateIMS($username, $messageid, 'draftadd'); }
-      }
+            if ( !-e ("$memberdir/$UserTo.vars") ) {
 
-      ## if this is a draft being sent, remove it from the draft file
-      if ($FORM{'draftid'} && $FORM{'draft'} ne $inmes_txt{'savedraft'}) {
-            &updateIMS($username, $messageid, 'draftsend');
-            fopen(DRAFTFILE, "$memberdir/$username.imdraft");
-            my @draftPM = <DRAFTFILE>;
-            fclose(DRAFTFILE);
-            fopen(DRAFTFILE, ">$memberdir/$username.imdraft");
-            seek DRAFTFILE,0,0;
-            foreach my $draftmess (@draftPM) {
-                  chomp $draftmess;
-                  if ((split /\|/, $draftmess)[0] != $FORM{'draftid'}) {
-                        print DRAFTFILE "$draftmess\n";
-                  } elsif ($FORM{'draftleave'}) {
-                        print DRAFTFILE "$messageid|$username|$FORM{'toshow'}|$FORM{'toshowcc'}|$FORM{'toshowbcc'}|$subject|$date|$message|$messageid|$FORM{'reply'}|$ENV{'REMOTE_ADDR'}|$FORM{'status'}$messFlag|||\n";
-                  }
+   # adds invalid user's name to array which error list will be built from later
+                push( @nouser, $UserTo );
+                $ignored = 1;
             }
-            fclose(DRAFTFILE);
-      }
-      # invalid users
-      #if there were invalid usernames in the recipient list, these names are listed after all valid users have been IMed
-      if (!$FORM{'draft'}) {
-            if (@nouser) {
-                  my $badusers;
-                  foreach my $baduser (@nouser) {
-                        &LoadUser($baduser);
-                        $badusers .= qq~<a href="$scripturl?action=viewprofile;username=$useraccount{$baduser}">${$uid.$baduser}{'realname'}</a>, ~;
-                  }
-                  $badusers =~ s/, \Z//;
-                  &fatal_error('im_bad_users', $badusers);
+
+            if ( !$ignored ) {
+
+                # Send message to user
+                fopen( INBOX, "$memberdir/$UserTo.msg" );
+                my @inmessages = <INBOX>;
+                fclose(INBOX);
+                fopen( INBOX, ">$memberdir/$UserTo.msg" );
+                print INBOX
+"$messageid|$username|$FORM{'toshow'}|$FORM{'toshowcc'}|$FORM{'toshowbcc'}|$subject|$date|$message|$messageid|0|$ENV{'REMOTE_ADDR'}|$FORM{'status'}|u||\n";
+                print INBOX @inmessages;
+                fclose(INBOX);
+
+                # we've added the msg to the inbox, now update the ims file
+                &updateIMS( $UserTo, $messageid, 'messagein' );
+                ## if we need to drop the 'away' reply in....
+                if ($sendAutoReply) {
+                    my $rmessageid = &getnewid;
+                    fopen( INBOX, "$memberdir/$username.msg" );
+                    my @myinmessages = <INBOX>;
+                    fclose(INBOX);
+                    fopen( INBOX, ">$memberdir/$username.msg" );
+                    print INBOX
+"$rmessageid|$UserTo|$username|||${$uid.$UserTo}{'awaysubj'}|$date|${$uid.$UserTo}{'awayreply'}|$messageid|1|$ENV{'REMOTE_ADDR'}|s|u||\n";
+                    print INBOX @myinmessages;
+                    fclose(INBOX);
+                }
+                ## relocated sender msg out of the loop
+
+# Send notification (Will only work if Admin has allowed the Email Notification)
+                if ( ${ $uid . $UserTo }{'notify_me'} > 1
+                    && $enable_notifications > 1 )
+                {
+                    require "$sourcedir/Mailer.pl";
+                    $language = ${ $uid . $UserTo }{'language'};
+                    &LoadLanguage('Email');
+                    &LoadLanguage('Notify');
+                    &LoadCensorList;
+                    $useremail = ${ $uid . $UserTo }{'email'};
+                    $useremail =~ s/[\n\r]//g;
+                    if ( $useremail ne '' ) {
+                        my $msubject = $subject ? $subject : $inmes_txt{'767'};
+                        $fromname = ${ $uid . $username }{'realname'};
+                        &FromHTML($msubject);
+                        &ToChars($msubject);
+                        $msubject = &Censor($msubject);
+                        my $chmessage = $message;
+                        &FromHTML($chmessage);
+                        &ToChars($chmessage);
+                        $chmessage = &Censor($chmessage);
+                        $chmessage =~ s~<br.*?>~\n~gi;
+                        $chmessage =~ s~\[b\](.*?)\[/b\]~*$1*~isg;
+                        $chmessage =~ s~\[i\](.*?)\[/i\]~/$1/~isg;
+                        $chmessage =~ s~\[u\](.*?)\[/u\]~_$1_~isg;
+                        $chmessage =~ s~\[.*?\]~~g;
+                        &sendmail(
+                            $useremail,
+                            $notify_txt{'145'},
+                            &template_email(
+                                $privatemessagenotificationemail,
+                                {
+                                    'sender'  => $fromname,
+                                    'subject' => $msubject,
+                                    'message' => $chmessage
+                                }
+                            ),
+                            '',
+                            $emailcharset
+                        );
+                    }
+                }
+            }    #end add PM to outbox
+        }    #end foreach loop
+        if ( $#allto == $#nouser ) {
+            my $badusers;
+            foreach my $baduser (@nouser) {
+                &LoadUser($baduser);
+                $badusers .=
+qq~<a href="$scripturl?action=viewprofile;username=$useraccount{$baduser}">${$uid.$baduser}{'realname'}</a>, ~;
             }
-      }
+            $badusers =~ s/, \Z//;
+            &fatal_error( 'im_bad_users', $badusers );
+        }
+    }
 
-      ## saving a draft doesn't count as sending
-      if (!$FORM{'draft'}) { &UserAccount($username, 'update', 'lastim'); }
-      &UserAccount($username, 'update', 'lastonline');
+    ##  moved sender's reply marker here, open the sender's inbox and mark 'replied'
+    if ( !$FORM{'draft'} && $isBMess ) {
+        fopen( INBOX, "$memberdir/broadcast.messages" );
+        my @inmessages = <INBOX>;
+        fclose(INBOX);
+        fopen( INBOX, ">$memberdir/broadcast.messages" );
+        print INBOX
+"$messageid|$username|$FORM{'toshow'}|||$subject|$date|$message|$messageid|0|$ENV{'REMOTE_ADDR'}|$FORM{'status'}b|u||\n";
+        print INBOX @inmessages;
+        fclose(INBOX);
+    }
 
-      if ($FORM{'dontstoreinoutbox'}) { $yySetLocation = qq~$scripturl?action=im~; }
-      elsif ($FORM{'draft'}) { $yySetLocation = qq~$scripturl?action=imdraft~; }
-      else { $yySetLocation = qq~$scripturl?action=imoutbox~; }
-      &redirectexit;
+    if ( $FORM{'reply'} && $FORM{'info'} ) {    # mark msg replied
+        &updateMessageFlag( $username, $FORM{'info'}, 'msg', '', 'r' );
+    }
+
+    ## this now outside the foreach, to allow just one write in the outbox
+    # Add message to outbox, read outbox
+
+    @outmessages = ();
+    my $savetofile = 'outbox';
+    if ( $FORM{'draft'} ) { $savetofile = 'imdraft'; }
+    fopen( OUTBOX, "$memberdir/$username.$savetofile" );
+    @outmessages = <OUTBOX>;
+    fclose(OUTBOX);
+
+    # add the PM to the outbox
+    # the sep users now live together
+    my $messFlag = '';
+    if ($isBMess) { $messFlag = 'b'; }
+    if ($replyguest) {
+        $messFlag = 'gr';
+
+        $FORM{'toguest'} =~ s/ /%20/g;
+        $FORM{'toshow'} = $FORM{'toguest'} . ' ' . $FORM{'guestemail'};
+        $FORM{'toshow'}     =~ s/[\n\r]//g;
+        $FORM{'guestemail'} =~ s/[\n\r]//g;
+
+        $fromname = ${ $uid . $username }{'realname'};
+
+        my $msubject = $subject;
+        &FromHTML($msubject);
+        &ToChars($msubject);
+
+        $chmessage = $message;
+        &FromHTML($chmessage);
+        &ToChars($chmessage);
+        $chmessage =~ s~<br.*?>~\n~gi;
+        $chmessage =~ s~\[b\](.*?)\[/b\]~*$1*~isg;
+        $chmessage =~ s~\[i\](.*?)\[/i\]~/$1/~isg;
+        $chmessage =~ s~\[u\](.*?)\[/u\]~_$1_~isg;
+        $chmessage =~ s~\[.*?\]~~g;
+        $chmessage =~ s/\r(?=\n*)//g;
+
+        require "$sourcedir/Mailer.pl";
+        &sendmail( $FORM{'guestemail'}, $msubject, $chmessage,
+            ${ $uid . $username }{'email'} );
+    }
+
+    if ( !$FORM{'dontstoreinoutbox'} || $FORM{'draft'} ) {
+        fopen( OUTBOX, "+>$memberdir/$username.$savetofile" )
+          || &fatal_error( 'cannot_open', "+>$memberdir/$username.$savetofile",
+            1 );
+        ## all but drafts being resaved just get added to their file
+        if ( !$FORM{'draft'} || ( $FORM{'draft'} && !$FORM{'draftid'} ) ) {
+            print OUTBOX
+"$messageid|$username|$FORM{'toshow'}|$FORM{'toshowcc'}|$FORM{'toshowbcc'}|$subject|$date|$message|$messageid|$FORM{'reply'}|$ENV{'REMOTE_ADDR'}|$FORM{'status'}$messFlag|||\n";
+            print OUTBOX @outmessages;
+
+        }
+        elsif ( $FORM{'draft'} && $FORM{'draftid'} ) {
+            ## resaving draft - find draft message id and amend the entry
+            foreach my $outmessage (@outmessages) {
+                chomp $outmessage;
+                if ( ( split /\|/, $outmessage )[0] != $FORM{'draftid'} ) {
+                    print OUTBOX "$outmessage\n";
+                }
+                else {
+                    print OUTBOX
+"$messageid|$username|$FORM{'toshow'}|$FORM{'toshowcc'}|$FORM{'toshowbcc'}|$subject|$date|$message|$messageid|$FORM{'reply'}|$ENV{'REMOTE_ADDR'}|$FORM{'status'}$messFlag|||\n";
+                }
+            }
+        }
+        fclose(OUTBOX);
+
+        ## pdate ims for sent
+        if ( !$FORM{'draft'} ) {
+            &updateIMS( $username, $messageid, 'messageout' );
+        }
+        elsif ( !$FORM{'draftid'} ) {
+            &updateIMS( $username, $messageid, 'draftadd' );
+        }
+    }
+
+    ## if this is a draft being sent, remove it from the draft file
+    if ( $FORM{'draftid'} && $FORM{'draft'} ne $inmes_txt{'savedraft'} ) {
+        &updateIMS( $username, $messageid, 'draftsend' );
+        fopen( DRAFTFILE, "$memberdir/$username.imdraft" );
+        my @draftPM = <DRAFTFILE>;
+        fclose(DRAFTFILE);
+        fopen( DRAFTFILE, ">$memberdir/$username.imdraft" );
+        seek DRAFTFILE, 0, 0;
+        foreach my $draftmess (@draftPM) {
+            chomp $draftmess;
+            if ( ( split /\|/, $draftmess )[0] != $FORM{'draftid'} ) {
+                print DRAFTFILE "$draftmess\n";
+            }
+            elsif ( $FORM{'draftleave'} ) {
+                print DRAFTFILE
+"$messageid|$username|$FORM{'toshow'}|$FORM{'toshowcc'}|$FORM{'toshowbcc'}|$subject|$date|$message|$messageid|$FORM{'reply'}|$ENV{'REMOTE_ADDR'}|$FORM{'status'}$messFlag|||\n";
+            }
+        }
+        fclose(DRAFTFILE);
+    }
+
+# invalid users
+#if there were invalid usernames in the recipient list, these names are listed after all valid users have been IMed
+    if ( !$FORM{'draft'} ) {
+        if (@nouser) {
+            my $badusers;
+            foreach my $baduser (@nouser) {
+                &LoadUser($baduser);
+                $badusers .=
+qq~<a href="$scripturl?action=viewprofile;username=$useraccount{$baduser}">${$uid.$baduser}{'realname'}</a>, ~;
+            }
+            $badusers =~ s/, \Z//;
+            &fatal_error( 'im_bad_users', $badusers );
+        }
+    }
+
+    ## saving a draft doesn't count as sending
+    if ( !$FORM{'draft'} ) { &UserAccount( $username, 'update', 'lastim' ); }
+    &UserAccount( $username, 'update', 'lastonline' );
+
+    if ( $FORM{'dontstoreinoutbox'} ) {
+        $yySetLocation = qq~$scripturl?action=im~;
+    }
+    elsif ( $FORM{'draft'} ) { $yySetLocation = qq~$scripturl?action=imdraft~; }
+    else { $yySetLocation = qq~$scripturl?action=imoutbox~; }
+    &redirectexit;
 }
-
 
 ##  process the to/cc/bcc lists
 sub ProcIMrecs {
-      $FORM{'toshow'} =~ s/ //g;
+    $FORM{'toshow'} =~ s/ //g;
 
-      if (!$isBMess) {
+    if ( !$isBMess ) {
+        my $countMulti = 0;
+        @multiple = split( /\,/, $FORM{'toshow'} );
+        foreach my $multiUser (@multiple) {
+            if ($do_scramble_id) {
+                $multiple[$countMulti] = &decloak($multiUser);
+            }
+            $countMulti++;
+        }
+        $toshowList = join( ',', @multiple );
+        $toshowList = qq~to:$toshowList~;
+        $toshowList =~ s/,/,to:/g;
+        push( @allto, split( /\,/, $toshowList ) );
+        $FORM{'toshow'} = join( ',', @multiple );
+        $FORM{'toshowcc'}  =~ s/ //g;
+        $FORM{'toshowbcc'} =~ s/ //g;
+
+        if ( $FORM{'toshowcc'} ) {
             my $countMulti = 0;
-            @multiple = split(/\,/, $FORM{'toshow'});
-            foreach my $multiUser (@multiple) {
-                  if ($do_scramble_id) { $multiple[$countMulti] = &decloak($multiUser); }
-                  $countMulti++ ;
+            @multiplecc = split( /\,/, $FORM{'toshowcc'} );
+            foreach my $multiUser (@multiplecc) {
+                $multiUser =~ s/ //g;
+                if ($do_scramble_id) {
+                    $multiplecc[$countMulti] = &decloak($multiUser);
+                }
+                else { $multiplecc[$countMulti] = $multiUser; }
+                $countMulti++;
             }
-            $toshowList = join(',', @multiple);
-            $toshowList = qq~to:$toshowList~;
-            $toshowList =~ s/,/,to:/g;
-            push(@allto, split(/\,/,$toshowList));
-            $FORM{'toshow'} = join(',', @multiple);
-            $FORM{'toshowcc'} =~ s/ //g;
-            $FORM{'toshowbcc'} =~ s/ //g;
-
-            if ($FORM{'toshowcc'}) {
-                  my $countMulti = 0;
-                  @multiplecc = split(/\,/, $FORM{'toshowcc'});
-                  foreach my $multiUser (@multiplecc) {
-                        $multiUser =~ s/ //g;
-                        if ($do_scramble_id) { $multiplecc[$countMulti] = &decloak($multiUser); }
-                        else { $multiplecc[$countMulti] = $multiUser; }
-                        $countMulti++ ;
-                  }
-                  $toshowccList = join(',', @multiplecc);
-                  $toshowccList = qq~cc:$toshowccList~;
-                  $toshowccList =~ s/,/,cc:/g;
-                  push(@allto, split(/\,/,$toshowccList));
-                  $FORM{'toshowcc'} = join(',', @multiplecc);
+            $toshowccList = join( ',', @multiplecc );
+            $toshowccList = qq~cc:$toshowccList~;
+            $toshowccList =~ s/,/,cc:/g;
+            push( @allto, split( /\,/, $toshowccList ) );
+            $FORM{'toshowcc'} = join( ',', @multiplecc );
+        }
+        if ( $FORM{'toshowbcc'} ) {
+            my $countMulti = 0;
+            @multiplebcc = split( /\,/, $FORM{'toshowbcc'} );
+            foreach my $multiUser (@multiplebcc) {
+                $multiUser =~ s/ //g;
+                if ($do_scramble_id) {
+                    $multiplebcc[$countMulti] = &decloak($multiUser);
+                }
+                else { $multiplebcc[$countMulti] = $multiUser; }
+                $countMulti++;
             }
-            if ($FORM{'toshowbcc'}) {
-                  my $countMulti = 0;
-                  @multiplebcc = split(/\,/, $FORM{'toshowbcc'});
-                  foreach my $multiUser (@multiplebcc) {
-                        $multiUser =~ s/ //g;
-                        if ($do_scramble_id) { $multiplebcc[$countMulti] = &decloak($multiUser); }
-                        else{$multiplebcc[$countMulti] = $multiUser;}
-                        $countMulti++ ;
-                  }
-                  $toshowbccList = join(',', @multiplebcc);
-                  $toshowbccList = qq~bcc:$toshowbccList~;
-                  $toshowbccList =~ s/,/,bcc:/g;
-                  push(@allto, split(/\,/,$toshowbccList));
-                  $FORM{'toshowbcc'} = join(',', @multiplebcc);
-            }
-      }
+            $toshowbccList = join( ',', @multiplebcc );
+            $toshowbccList = qq~bcc:$toshowbccList~;
+            $toshowbccList =~ s/,/,bcc:/g;
+            push( @allto, split( /\,/, $toshowbccList ) );
+            $FORM{'toshowbcc'} = join( ',', @multiplebcc );
+        }
+    }
 }
 
 sub pageLinksList {
-      # Build the page links list.
-      $maxmessagedisplay ||= 10;
-      my $userthreadpage = (split /\|/, ${$uid.$username}{'pageindex'})[3];
-      my ($pagetxtindex, $pagetextindex, $pagedropindex1, $pagedropindex2, $all, $allselected, $bmesslink);
-      $postdisplaynum = 3; # max number of pages to display
-      $dropdisplaynum = 10;
-      $startpage = 0;
-      if ($INFO{'viewfolder'} ne '') { $viewfolderinfo = qq~;viewfolder=$INFO{'viewfolder'}~; }
-      if ($INFO{'focus'} eq 'bmess') { $bmesslink = qq~;focus=bmess~;}
-      my @tempim = @dimmessages;
-      if ($action eq 'imstorage') {
-            my $i = 0;
-            foreach (@dimmessages) {
-                  if ((split(/\|/, $_))[13] ne $INFO{'viewfolder'}) {
-                        splice(@tempim,$i,1);
-                        next;
-                  }
-                  $i++;
+
+    # Build the page links list.
+    $maxmessagedisplay ||= 10;
+    my $userthreadpage = ( split /\|/, ${ $uid . $username }{'pageindex'} )[3];
+    my ( $pagetxtindex, $pagetextindex, $pagedropindex1, $pagedropindex2, $all,
+        $allselected, $bmesslink );
+    $postdisplaynum = 3;    # max number of pages to display
+    $dropdisplaynum = 10;
+    $startpage      = 0;
+    if ( $INFO{'viewfolder'} ne '' ) {
+        $viewfolderinfo = qq~;viewfolder=$INFO{'viewfolder'}~;
+    }
+    if ( $INFO{'focus'} eq 'bmess' ) { $bmesslink = qq~;focus=bmess~; }
+    my @tempim = @dimmessages;
+    if ( $action eq 'imstorage' ) {
+        my $i = 0;
+        foreach (@dimmessages) {
+            if ( ( split( /\|/, $_ ) )[13] ne $INFO{'viewfolder'} ) {
+                splice( @tempim, $i, 1 );
+                next;
             }
-      }
-      $max = $#tempim + 1;
-      if ($INFO{'start'} eq "all") { $maxmessagedisplay = $max; $all = 1; $allselected = qq~ selected="selected"~; $start = 0; }
-      else { $start = $INFO{'start'} || 0; }
-      $start = $start > $#tempim ? $#tempim : $start;
-      $start = (int($start / $maxmessagedisplay)) * $maxmessagedisplay;
-      $tmpa = 1;
-      $pagenumb = int(($max - 1) / $maxmessagedisplay) + 1;
-      if ($start >= (($postdisplaynum - 1) * $maxmessagedisplay)) {
-            $startpage = $start - (($postdisplaynum - 1) * $maxmessagedisplay);
-            $tmpa = int($startpage / $maxmessagedisplay) + 1;
-      }
-      if ($max >= $start + ($postdisplaynum * $maxmessagedisplay)) { $endpage = $start + ($postdisplaynum * $maxmessagedisplay); }
-      else { $endpage = $max; }
-      $lastpn = int($#tempim / $maxmessagedisplay) + 1;
-      $lastptn = ($lastpn - 1) * $maxmessagedisplay;
-      $pageindex1 = qq~<span class="small" style="float: left; height: 21px; margin: 0px; margin-top: 2px;"><img src="$imagesdir/index_togl.gif" border="0" alt="$display_txt{'19'}" title="$display_txt{'19'}" style="vertical-align: middle;" /> $display_txt{'139'}: $pagenumb</span>~;
-      if ($pagenumb > 1 || $all) {
-            if ($userthreadpage == 1 ) {
-                  $pagetxtindexst = qq~<span class="small" style="float: left; height: 21px; margin: 0px; margin-top: 2px;">~;
-                  $pagetxtindexst .= qq~<a href="$scripturl?pmaction=$action$bmesslink;start=$start;action=pmpagetext$viewfolderinfo"><img src="$imagesdir/index_togl.gif" border="0" alt="$display_txt{'19'}" title="$display_txt{'19'}" style="vertical-align: middle;" /></a> $display_txt{'139'}: ~;
-                  if ($startpage > 0) { $pagetxtindex = qq~<a href="$scripturl?action=$action$bmesslink/0$viewfolderinfo" style="font-weight: normal;">1</a>&nbsp;...&nbsp;~; }
-                  if ($startpage == $maxmessagedisplay) { $pagetxtindex = qq~<a href="$scripturl?action=$action$bmesslink;start=0$viewfolderinfo" style="font-weight: normal;">1</a>&nbsp;~; }
-                  for ($counter = $startpage; $counter < $endpage; $counter += $maxmessagedisplay) {
-                        $pagetxtindex .= $start == $counter ? qq~<b>$tmpa</b>&nbsp;~ : qq~<a href="$scripturl?action=$action$bmesslink;start=$counter$viewfolderinfo" style="font-weight: normal;">$tmpa</a>&nbsp;~;
-                        $tmpa++;
-                  }
-                  if ($endpage < $max - ($maxmessagedisplay)) { $pageindexadd = qq~...&nbsp;~; }
-                  if ($endpage != $max) { $pageindexadd .= qq~<a href="$scripturl?action=$action$bmesslink;start=$lastptn$viewfolderinfo" style="font-weight: normal;">$lastpn</a>~; }
-                  $pagetxtindex .= qq~$pageindexadd~;
-                  $pageindex1 = qq~$pagetxtindexst$pagetxtindex</span>~;
-                  $pageindex2 = $pageindex1;
-            } else {
-                  $pagedropindex1 = qq~<span style="float: left; width: 350px; margin: 0px; margin-top: 2px; border: 0px;">~;
-                  $pagedropindex1 .= qq~<span style="float: left; height: 21px; margin: 0; margin-right: 4px;"><a href="$scripturl?pmaction=$action$bmesslink;start=$start;action=pmpagedrop$viewfolderinfo"><img src="$imagesdir/index_togl.gif" border="0" alt="$display_txt{'19'}" title="$display_txt{'19'}" /></a></span>~;
-                  $pagedropindex2 = $pagedropindex1;
-                  $tstart = $start;
-                  if (substr($INFO{'start'}, 0, 3) eq "all") { ($tstart, $start) = split(/\-/, $INFO{'start'}); }
-                  $d_indexpages = $pagenumb / $dropdisplaynum;
-                  $i_indexpages = int($pagenumb / $dropdisplaynum);
-                  if ($d_indexpages > $i_indexpages) { $indexpages = int($pagenumb / $dropdisplaynum) + 1; }
-                  else { $indexpages = int($pagenumb / $dropdisplaynum) }
-                  $selectedindex = int(($start / $maxmessagedisplay) / $dropdisplaynum);
-                  if ($pagenumb > $dropdisplaynum) {
-                        $pagedropindex1 .= qq~<span style="float: left; height: 21px; margin: 0;"><select size="1" name="decselector1" id="decselector1" style="font-size: 9px; border: 2px inset;" onchange="if(this.options[this.selectedIndex].value) SelDec(this.options[this.selectedIndex].value, 'xx')">\n~;
-                        $pagedropindex2 .= qq~<span style="float: left; height: 21px; margin: 0;"><select size="1" name="decselector2" id="decselector2" style="font-size: 9px; border: 2px inset;" onchange="if(this.options[this.selectedIndex].value) SelDec(this.options[this.selectedIndex].value, 'xx')">\n~;
-                  }
-                  for ($i = 0; $i < $indexpages; $i++) {
-                        $indexpage = ($i * $dropdisplaynum) * $maxmessagedisplay;
-                        $indexstart = ($i * $dropdisplaynum) + 1;
-                        $indexend = $indexstart + ($dropdisplaynum - 1);
-                        if ($indexend > $pagenumb) { $indexend   = $pagenumb; }
-                        if ($indexstart == $indexend) { $indxoption = qq~$indexstart~; }
-                        else { $indxoption = qq~$indexstart-$indexend~; }
-                        $selected = "";
-                        if ($i == $selectedindex) {
-                              $selected    = qq~ selected="selected"~;
-                              $pagejsindex = qq~$indexstart|$indexend|$maxmessagedisplay|$indexpage~;
-                        }
-                        if ($pagenumb > $dropdisplaynum) {
-                              $pagedropindex1 .= qq~<option value="$indexstart|$indexend|$maxmessagedisplay|$indexpage"$selected>$indxoption</option>\n~;
-                              $pagedropindex2 .= qq~<option value="$indexstart|$indexend|$maxmessagedisplay|$indexpage"$selected>$indxoption</option>\n~;
-                        }
-                  }
-                  if ($pagenumb > $dropdisplaynum) {
-                        $pagedropindex1 .= qq~</select>\n</span>~;
-                        $pagedropindex2 .= qq~</select>\n</span>~;
-                  }
-                  $pagedropindex1 .= qq~<span id="ViewIndex1" class="droppageindex" style="height: 14px; visibility: hidden;">&nbsp;</span>~;
-                  $pagedropindex2 .= qq~<span id="ViewIndex2" class="droppageindex" style="height: 14px; visibility: hidden;">&nbsp;</span>~;
-                  $tmpmaxmessagedisplay = $maxmessagedisplay;
-                  if (substr($INFO{'start'}, 0, 3) eq "all") { $maxmessagedisplay = $maxmessagedisplay * $dropdisplaynum; }
-                  $prevpage = $start - $tmpmaxmessagedisplay;
-                  $nextpage = $start + $maxmessagedisplay;
-                  $pagedropindexpvbl = qq~<img src="$imagesdir/index_left0.gif" height="14" width="13" border="0" alt="" style="margin: 0px; display: inline; vertical-align: middle;" />~;
-                  $pagedropindexnxbl = qq~<img src="$imagesdir/index_right0.gif" height="14" width="13" border="0" alt="" style="margin: 0px; display: inline; vertical-align: middle;" />~;
-                  if ($start < $maxmessagedisplay) { $pagedropindexpv .= qq~<img src="$imagesdir/index_left0.gif" height="14" width="13" border="0" alt="" style="display: inline; vertical-align: middle;" />~; }
-                  else { $pagedropindexpv .= qq~<img src="$imagesdir/index_left.gif" border="0" height="14" width="13" alt="$pidtxt{'02'}" title="$pidtxt{'02'}" style="display: inline; vertical-align: middle; cursor: pointer;" onclick="location.href=\\'$scripturl?action=$action$bmesslink;start=$prevpage\\'" ondblclick="location.href=\\'$scripturl?action=$action$bmesslink;start=0\\'" />~; }
-                  if ($nextpage > $lastptn) { $pagedropindexnx .= qq~<img src="$imagesdir/index_right0.gif" border="0" height="14" width="13" alt="" style="display: inline; vertical-align: middle;" />~; }
-                  else { $pagedropindexnx .= qq~<img src="$imagesdir/index_right.gif" height="14" width="13" border="0" alt="$pidtxt{'03'}" title="$pidtxt{'03'}" style="display: inline; vertical-align: middle; cursor: pointer;" onclick="location.href=\\'$scripturl?action=$action$bmesslink;start=$nextpage\\'" ondblclick="location.href=\\'$scripturl?action=$action$bmesslink;start=$lastptn\\'" />~; }
-                  $pageindex1 = qq~$pagedropindex1</span>~;
-                  $pageindexjs = qq~
+            $i++;
+        }
+    }
+    $max = $#tempim + 1;
+    if ( $INFO{'start'} eq "all" ) {
+        $maxmessagedisplay = $max;
+        $all               = 1;
+        $allselected       = qq~ selected="selected"~;
+        $start             = 0;
+    }
+    else { $start = $INFO{'start'} || 0; }
+    $start    = $start > $#tempim ? $#tempim : $start;
+    $start    = ( int( $start / $maxmessagedisplay ) ) * $maxmessagedisplay;
+    $tmpa     = 1;
+    $pagenumb = int( ( $max - 1 ) / $maxmessagedisplay ) + 1;
+    if ( $start >= ( ( $postdisplaynum - 1 ) * $maxmessagedisplay ) ) {
+        $startpage = $start - ( ( $postdisplaynum - 1 ) * $maxmessagedisplay );
+        $tmpa = int( $startpage / $maxmessagedisplay ) + 1;
+    }
+    if ( $max >= $start + ( $postdisplaynum * $maxmessagedisplay ) ) {
+        $endpage = $start + ( $postdisplaynum * $maxmessagedisplay );
+    }
+    else { $endpage = $max; }
+    $lastpn  = int( $#tempim / $maxmessagedisplay ) + 1;
+    $lastptn = ( $lastpn - 1 ) * $maxmessagedisplay;
+    $pageindex1 =
+qq~<span class="small" style="float: left; height: 21px; margin: 0px; margin-top: 2px;"><img src="$imagesdir/index_togl.gif" border="0" alt="$display_txt{'19'}" title="$display_txt{'19'}" style="vertical-align: middle;" /> $display_txt{'139'}: $pagenumb</span>~;
+    if ( $pagenumb > 1 || $all ) {
+        if ( $userthreadpage == 1 ) {
+            $pagetxtindexst =
+qq~<span class="small" style="float: left; height: 21px; margin: 0px; margin-top: 2px;">~;
+            $pagetxtindexst .=
+qq~<a href="$scripturl?pmaction=$action$bmesslink;start=$start;action=pmpagetext$viewfolderinfo"><img src="$imagesdir/index_togl.gif" border="0" alt="$display_txt{'19'}" title="$display_txt{'19'}" style="vertical-align: middle;" /></a> $display_txt{'139'}: ~;
+            if ( $startpage > 0 ) {
+                $pagetxtindex =
+qq~<a href="$scripturl?action=$action$bmesslink/0$viewfolderinfo" style="font-weight: normal;">1</a>&nbsp;...&nbsp;~;
+            }
+            if ( $startpage == $maxmessagedisplay ) {
+                $pagetxtindex =
+qq~<a href="$scripturl?action=$action$bmesslink;start=0$viewfolderinfo" style="font-weight: normal;">1</a>&nbsp;~;
+            }
+            for (
+                $counter = $startpage ;
+                $counter < $endpage ;
+                $counter += $maxmessagedisplay
+              )
+            {
+                $pagetxtindex .=
+                  $start == $counter
+                  ? qq~<b>$tmpa</b>&nbsp;~
+                  : qq~<a href="$scripturl?action=$action$bmesslink;start=$counter$viewfolderinfo" style="font-weight: normal;">$tmpa</a>&nbsp;~;
+                $tmpa++;
+            }
+            if ( $endpage < $max - ($maxmessagedisplay) ) {
+                $pageindexadd = qq~...&nbsp;~;
+            }
+            if ( $endpage != $max ) {
+                $pageindexadd .=
+qq~<a href="$scripturl?action=$action$bmesslink;start=$lastptn$viewfolderinfo" style="font-weight: normal;">$lastpn</a>~;
+            }
+            $pagetxtindex .= qq~$pageindexadd~;
+            $pageindex1 = qq~$pagetxtindexst$pagetxtindex</span>~;
+            $pageindex2 = $pageindex1;
+        }
+        else {
+            $pagedropindex1 =
+qq~<span style="float: left; width: 350px; margin: 0px; margin-top: 2px; border: 0px;">~;
+            $pagedropindex1 .=
+qq~<span style="float: left; height: 21px; margin: 0; margin-right: 4px;"><a href="$scripturl?pmaction=$action$bmesslink;start=$start;action=pmpagedrop$viewfolderinfo"><img src="$imagesdir/index_togl.gif" border="0" alt="$display_txt{'19'}" title="$display_txt{'19'}" /></a></span>~;
+            $pagedropindex2 = $pagedropindex1;
+            $tstart         = $start;
+            if ( substr( $INFO{'start'}, 0, 3 ) eq "all" ) {
+                ( $tstart, $start ) = split( /\-/, $INFO{'start'} );
+            }
+            $d_indexpages = $pagenumb / $dropdisplaynum;
+            $i_indexpages = int( $pagenumb / $dropdisplaynum );
+            if ( $d_indexpages > $i_indexpages ) {
+                $indexpages = int( $pagenumb / $dropdisplaynum ) + 1;
+            }
+            else { $indexpages = int( $pagenumb / $dropdisplaynum ) }
+            $selectedindex =
+              int( ( $start / $maxmessagedisplay ) / $dropdisplaynum );
+            if ( $pagenumb > $dropdisplaynum ) {
+                $pagedropindex1 .=
+qq~<span style="float: left; height: 21px; margin: 0;"><select size="1" name="decselector1" id="decselector1" style="font-size: 9px; border: 2px inset;" onchange="if(this.options[this.selectedIndex].value) SelDec(this.options[this.selectedIndex].value, 'xx')">\n~;
+                $pagedropindex2 .=
+qq~<span style="float: left; height: 21px; margin: 0;"><select size="1" name="decselector2" id="decselector2" style="font-size: 9px; border: 2px inset;" onchange="if(this.options[this.selectedIndex].value) SelDec(this.options[this.selectedIndex].value, 'xx')">\n~;
+            }
+            for ( $i = 0 ; $i < $indexpages ; $i++ ) {
+                $indexpage  = ( $i * $dropdisplaynum ) * $maxmessagedisplay;
+                $indexstart = ( $i * $dropdisplaynum ) + 1;
+                $indexend   = $indexstart + ( $dropdisplaynum - 1 );
+                if ( $indexend > $pagenumb ) { $indexend = $pagenumb; }
+                if ( $indexstart == $indexend ) {
+                    $indxoption = qq~$indexstart~;
+                }
+                else { $indxoption = qq~$indexstart-$indexend~; }
+                $selected = "";
+                if ( $i == $selectedindex ) {
+                    $selected = qq~ selected="selected"~;
+                    $pagejsindex =
+                      qq~$indexstart|$indexend|$maxmessagedisplay|$indexpage~;
+                }
+                if ( $pagenumb > $dropdisplaynum ) {
+                    $pagedropindex1 .=
+qq~<option value="$indexstart|$indexend|$maxmessagedisplay|$indexpage"$selected>$indxoption</option>\n~;
+                    $pagedropindex2 .=
+qq~<option value="$indexstart|$indexend|$maxmessagedisplay|$indexpage"$selected>$indxoption</option>\n~;
+                }
+            }
+            if ( $pagenumb > $dropdisplaynum ) {
+                $pagedropindex1 .= qq~</select>\n</span>~;
+                $pagedropindex2 .= qq~</select>\n</span>~;
+            }
+            $pagedropindex1 .=
+qq~<span id="ViewIndex1" class="droppageindex" style="height: 14px; visibility: hidden;">&nbsp;</span>~;
+            $pagedropindex2 .=
+qq~<span id="ViewIndex2" class="droppageindex" style="height: 14px; visibility: hidden;">&nbsp;</span>~;
+            $tmpmaxmessagedisplay = $maxmessagedisplay;
+            if ( substr( $INFO{'start'}, 0, 3 ) eq "all" ) {
+                $maxmessagedisplay = $maxmessagedisplay * $dropdisplaynum;
+            }
+            $prevpage = $start - $tmpmaxmessagedisplay;
+            $nextpage = $start + $maxmessagedisplay;
+            $pagedropindexpvbl =
+qq~<img src="$imagesdir/index_left0.gif" height="14" width="13" border="0" alt="" style="margin: 0px; display: inline; vertical-align: middle;" />~;
+            $pagedropindexnxbl =
+qq~<img src="$imagesdir/index_right0.gif" height="14" width="13" border="0" alt="" style="margin: 0px; display: inline; vertical-align: middle;" />~;
+            if ( $start < $maxmessagedisplay ) {
+                $pagedropindexpv .=
+qq~<img src="$imagesdir/index_left0.gif" height="14" width="13" border="0" alt="" style="display: inline; vertical-align: middle;" />~;
+            }
+            else {
+                $pagedropindexpv .=
+qq~<img src="$imagesdir/index_left.gif" border="0" height="14" width="13" alt="$pidtxt{'02'}" title="$pidtxt{'02'}" style="display: inline; vertical-align: middle; cursor: pointer;" onclick="location.href=\\'$scripturl?action=$action$bmesslink;start=$prevpage\\'" ondblclick="location.href=\\'$scripturl?action=$action$bmesslink;start=0\\'" />~;
+            }
+            if ( $nextpage > $lastptn ) {
+                $pagedropindexnx .=
+qq~<img src="$imagesdir/index_right0.gif" border="0" height="14" width="13" alt="" style="display: inline; vertical-align: middle;" />~;
+            }
+            else {
+                $pagedropindexnx .=
+qq~<img src="$imagesdir/index_right.gif" height="14" width="13" border="0" alt="$pidtxt{'03'}" title="$pidtxt{'03'}" style="display: inline; vertical-align: middle; cursor: pointer;" onclick="location.href=\\'$scripturl?action=$action$bmesslink;start=$nextpage\\'" ondblclick="location.href=\\'$scripturl?action=$action$bmesslink;start=$lastptn\\'" />~;
+            }
+            $pageindex1  = qq~$pagedropindex1</span>~;
+            $pageindexjs = qq~
                   <script language="JavaScript1.2" type="text/javascript">
                   <!--
                   function SelDec(decparam, visel) {
@@ -1830,297 +2109,443 @@ sub pageLinksList {
                               pagstart += maxpag;
                         }
                         ~;
-                        if ($showpageall) {
-                              $pageindexjs .= qq~
+            if ($showpageall) {
+                $pageindexjs .= qq~
                               if (vistart != viend) {
                                     if(visel == 'all') pagedropindex += '<td class="titlebg" height="14" style="height: 14px; padding-left: 1px; padding-right: 1px; font-size: 9px; font-weight: normal;"><b>$pidtxt{"01"}</b></td>';
                                     else pagedropindex += '<td height="14" class="droppages"><a href="$scripturl?action=$action$bmesslink;start=all-' + allpagstart + '">$pidtxt{"01"}</a></td>';
                               }
                               ~;
-                        }
-                        $pageindexjs .= qq~
+            }
+            $pageindexjs .= qq~
                         if (visel != 'xx') pagedropindex += '<td height="14" class="small" style="height: 14px; padding-left: 4px;">$pagedropindexpv$pagedropindexnx</td>';
                         else pagedropindex += '<td height="14" class="small" style="height: 14px; padding-left: 4px;">$pagedropindexpvbl$pagedropindexnxbl</td>';
                         pagedropindex += '</tr></table>';
                         document.getElementById('ViewIndex1').innerHTML=pagedropindex;
                         document.getElementById('ViewIndex1').style.visibility = 'visible';
                         ~;
-                        if ($pagenumb > $dropdisplaynum) {
-                        $pageindexjs .= qq~
+            if ( $pagenumb > $dropdisplaynum ) {
+                $pageindexjs .= qq~
                         document.getElementById('decselector1').value = decparam;
                         ~;
-                  }
-                  $pageindexjs .= qq~
+            }
+            $pageindexjs .= qq~
             }
             SelDec('$pagejsindex', '$tstart');
             //-->
             </script>
             ~;
-            }
-      }
+        }
+    }
 }
 
 ##  output one or all IM - detailed view
 sub DoShowIM {
-      $messfound = 0;
-      if ($callerid < 5) { &updateIMS($username, $_[0], 'inread'); }
+    $messfound = 0;
+    if ( $callerid < 5 ) { &updateIMS( $username, $_[0], 'inread' ); }
 
-      my ($showIM, $fromTitle, $toTitle, $toTitleCC, $toTitleBCC, $usernamelinkfrom, $usernamelinkto, $usernamelinkcc, $usernamelinkbcc, $userOnline, $prevMessId, $nextMessid, $PMnav);
-      $messcount = 0;
-      foreach my $messagesim (@dimmessages) {
-            $nextMessid = $messageid;
-            ($messageid, $musername, $mtousers, $mccusers, $mbccusers, $msub, $mdate, $immessage, $mpmessageid, $mreplyno, $imip, $mstatus, $mflags, $mstorefolder, $mattach) = split(/\|/, $messagesim);
-            $messcount++;
-            if ($messageid == $_[0]) { $messfound = 1; last; }
-      }
+    my (
+        $showIM,         $fromTitle,      $toTitle,
+        $toTitleCC,      $toTitleBCC,     $usernamelinkfrom,
+        $usernamelinkto, $usernamelinkcc, $usernamelinkbcc,
+        $userOnline,     $prevMessId,     $nextMessid,
+        $PMnav
+    );
+    $messcount = 0;
+    foreach my $messagesim (@dimmessages) {
+        $nextMessid = $messageid;
+        (
+            $messageid,   $musername,    $mtousers, $mccusers,
+            $mbccusers,   $msub,         $mdate,    $immessage,
+            $mpmessageid, $mreplyno,     $imip,     $mstatus,
+            $mflags,      $mstorefolder, $mattach
+        ) = split( /\|/, $messagesim );
+        $messcount++;
+        if ( $messageid == $_[0] ) { $messfound = 1; last; }
+    }
 
-      if (!$messfound) {
-            my $redirect;
-            if ($INFO{'caller'} == 1) { $redirect = 'im'; }
-            elsif ($INFO{'caller'} == 2) { $redirect = 'imoutbox'; }
-            elsif ($INFO{'caller'} == 3) { $redirect = 'imstorage'; }
-            elsif ($INFO{'caller'} == 4) { $redirect = 'imdraft'; }
-            elsif ($INFO{'caller'} == 5) { $redirect = 'im;focus=bmess'; }
-            $yySetLocation = qq~$scripturl?action=$redirect~;
-            &redirectexit;
-      }
+    if ( !$messfound ) {
+        my $redirect;
+        if    ( $INFO{'caller'} == 1 ) { $redirect = 'im'; }
+        elsif ( $INFO{'caller'} == 2 ) { $redirect = 'imoutbox'; }
+        elsif ( $INFO{'caller'} == 3 ) { $redirect = 'imstorage'; }
+        elsif ( $INFO{'caller'} == 4 ) { $redirect = 'imdraft'; }
+        elsif ( $INFO{'caller'} == 5 ) { $redirect = 'im;focus=bmess'; }
+        $yySetLocation = qq~$scripturl?action=$redirect~;
+        &redirectexit;
+    }
 
-      ## if not at the end of the list, catch the 'previoous' id
-      if ($messcount <= $#dimmessages){
-            ($prevMessId, undef) = split(/\|/, $dimmessages[$messcount]);
-      }
-      ## wrap the URL in
-      if ($INFO{'id'} ne 'all' && $prevMessId ne '') { $previd = qq~&laquo; <a href="$scripturl?action=imshow;caller=$INFO{'caller'};id=$prevMessId">$inmes_imtxt{'40'}</a>~; }
-      if ($INFO{'id'} ne 'all' && $nextMessid ne '') { $nextid = qq~<a href="$scripturl?action=imshow;caller=$INFO{'caller'};id=$nextMessid">$inmes_imtxt{'41'}</a> &raquo;~; }
-      if ($INFO{'id'} ne 'all' && $#dimmessages > 0) { $allid = qq~<a href="$scripturl?action=imshow;caller=$INFO{'caller'};id=all">$inmes_txt{'190'}</a>~; }
+    ## if not at the end of the list, catch the 'previoous' id
+    if ( $messcount <= $#dimmessages ) {
+        ( $prevMessId, undef ) = split( /\|/, $dimmessages[$messcount] );
+    }
+    ## wrap the URL in
+    if ( $INFO{'id'} ne 'all' && $prevMessId ne '' ) {
+        $previd =
+qq~&laquo; <a href="$scripturl?action=imshow;caller=$INFO{'caller'};id=$prevMessId">$inmes_imtxt{'40'}</a>~;
+    }
+    if ( $INFO{'id'} ne 'all' && $nextMessid ne '' ) {
+        $nextid =
+qq~<a href="$scripturl?action=imshow;caller=$INFO{'caller'};id=$nextMessid">$inmes_imtxt{'41'}</a> &raquo;~;
+    }
+    if ( $INFO{'id'} ne 'all' && $#dimmessages > 0 ) {
+        $allid =
+qq~<a href="$scripturl?action=imshow;caller=$INFO{'caller'};id=all">$inmes_txt{'190'}</a>~;
+    }
 
-      my $mydate = &timeformat($mdate);
-      if ($INFO{'caller'} == 1) {
-            if ($mtousers) {
-                  foreach my $uname (split(/,/, $mtousers)) {
-                        &LoadValidUserDisplay($uname);
-                        $usernamelinkto .= (${$uid.$uname}{'realname'} ? &CreateUserDisplayLine($uname) : ($uname ? qq~$uname ($maintxt{'470a'})~ : $maintxt{'470a'})) . ', '; # 470a == Ex-Member
-                  }
-                  $usernamelinkto =~ s/, $//;
-                  $toTitle = qq~$inmes_txt{'324'}:~;
-            }
-            if ($mccusers) {
-                  foreach my $uname (split(/,/, $mccusers)) {
-                        &LoadValidUserDisplay($uname);
-                        $usernamelinkcc .= (${$uid.$uname}{'realname'} ? &CreateUserDisplayLine($uname) : ($uname ? qq~$uname ($maintxt{'470a'})~ : $maintxt{'470a'})) . ', ';
-                  }
-                  $usernamelinkcc =~ s/, $//;
-                  $toTitleCC = qq~$inmes_txt{'325'}:~;
-            }
-            if ($mbccusers) {
-                  foreach my $uname (split(/,/, $mbccusers)) {
-                        if ($uname eq $username) {
-                              &LoadValidUserDisplay($uname);
-                              $usernamelinkbcc = ${$uid.$uname}{'realname'} ? &CreateUserDisplayLine($uname) : ($uname ? qq~$uname ($maintxt{'470a'})~ : $maintxt{'470a'});
-                        }
-                  }
-                  if ($usernamelinkbcc) {
-                        $toTitleBCC = qq~$inmes_txt{'326'}:~;
-                  }
-            }
-
-            if ($mstatus eq 'g') {
-                  my ($guestName, $guestEmail) = split(/ /, $musername);
-                  $guestName =~ s/%20/ /g;
-                  $usernamelinkfrom = qq~$guestName (<a href="mailto:$guestEmail">$guestEmail</a>)~;
-            } else {
-                  &LoadValidUserDisplay($musername);
-                  $usernamelinkfrom = ${$uid.$musername}{'realname'} ? &CreateUserDisplayLine($musername) : ($musername ? qq~$musername ($maintxt{'470a'})~ : $maintxt{'470a'}); # 470a == Ex-Member
-            }
-            $fromTitle = qq~$inmes_txt{'318'}:~;
-
-      } elsif ($INFO{'caller'} == 2) {
-            &LoadValidUserDisplay($musername);
-            $usernamelinkfrom = ${$uid.$musername}{'realname'} ? &CreateUserDisplayLine($musername) : ($musername ? qq~$musername ($maintxt{'470a'})~ : $maintxt{'470a'}); # 470a == Ex-Member
-            $fromTitle = qq~$inmes_txt{'318'}:~;
-
-            if ($mstatus !~ /b/) {
-                  if ($mstatus !~ /gr/) {
-                        foreach my $uname (split(/,/, $mtousers)) {
-                              &LoadValidUserDisplay($uname);
-                              $usernamelinkto .= (${$uid.$uname}{'realname'} ? &CreateUserDisplayLine($uname) : ($uname ? qq~$uname ($maintxt{'470a'})~ : $maintxt{'470a'})) . ', '; # 470a == Ex-Member
-                        }
-                  } else {
-                        my ($guestName, $guestEmail) = split(/ /, $mtousers);
-                        $guestName =~ s/%20/ /g;
-                        $usernamelinkto = qq~$guestName (<a href="mailto:$guestEmail">$guestEmail</a>)~;
-                  }
-                  $toTitle = qq~$inmes_txt{'324'}:~;
-            } else {
-                  foreach my $uname (split(/,/, $mtousers)) {
-                        if ($uname eq 'all') { $usernamelinkto .= qq~<b>$inmes_txt{'bmallmembers'}</b>~ . ', ';
-                        } elsif ($uname eq 'mods') { $usernamelinkto .= qq~<b>$inmes_txt{'bmmods'}</b>~ . ', ';
-                        } elsif ($uname eq 'gmods') { $usernamelinkto .= qq~<b>$inmes_txt{'bmgmods'}</b>~ . ', ';
-                        } elsif ($uname eq 'admins') { $usernamelinkto .= qq~<b>$inmes_txt{'bmadmins'}</b>~ . ', ';
-                        } else {
-                              my ($title, undef) = split(/\|/, $NoPost{$uname}, 2);
-                              $usernamelinkto .= qq~<b>$title</b>~ . ', ';
-                        }
-                  }
-                  $toTitle = qq~$inmes_txt{'324'} $inmes_txt{'327'}:~;
+    my $mydate = &timeformat($mdate);
+    if ( $INFO{'caller'} == 1 ) {
+        if ($mtousers) {
+            foreach my $uname ( split( /,/, $mtousers ) ) {
+                &LoadValidUserDisplay($uname);
+                $usernamelinkto .= (
+                    ${ $uid . $uname }{'realname'}
+                    ? &CreateUserDisplayLine($uname)
+                    : (
+                          $uname ? qq~$uname ($maintxt{'470a'})~
+                        : $maintxt{'470a'}
+                    )
+                ) . ', ';    # 470a == Ex-Member
             }
             $usernamelinkto =~ s/, $//;
-            if ($mccusers) {
-                  foreach my $uname (split(/,/, $mccusers)) {
-                        &LoadValidUserDisplay($uname);
-                        $usernamelinkcc .= (${$uid.$uname}{'realname'} ? &CreateUserDisplayLine($uname) : ($uname ? qq~$uname ($maintxt{'470a'})~ : $maintxt{'470a'})) . ', '; # 470a == Ex-Member
-                  }
-                  $usernamelinkcc =~ s/, $//;
-                  $toTitleCC = qq~$inmes_txt{'325'}:~;
+            $toTitle = qq~$inmes_txt{'324'}:~;
+        }
+        if ($mccusers) {
+            foreach my $uname ( split( /,/, $mccusers ) ) {
+                &LoadValidUserDisplay($uname);
+                $usernamelinkcc .= (
+                    ${ $uid . $uname }{'realname'}
+                    ? &CreateUserDisplayLine($uname)
+                    : (
+                          $uname ? qq~$uname ($maintxt{'470a'})~
+                        : $maintxt{'470a'}
+                    )
+                ) . ', ';
             }
-            if ($mbccusers) {
-                  foreach my $uname (split(/,/, $mbccusers)) {
-                        &LoadValidUserDisplay($uname);
-                        $usernamelinkbcc .= (${$uid.$uname}{'realname'} ? &CreateUserDisplayLine($uname) : ($uname ? qq~$uname ($maintxt{'470a'})~ : $maintxt{'470a'})) . ', '; # 470a == Ex-Member
-                  }
-                  $usernamelinkbcc =~ s/, $//;
-                  $toTitleBCC = qq~$inmes_txt{'326'}:~;
+            $usernamelinkcc =~ s/, $//;
+            $toTitleCC = qq~$inmes_txt{'325'}:~;
+        }
+        if ($mbccusers) {
+            foreach my $uname ( split( /,/, $mbccusers ) ) {
+                if ( $uname eq $username ) {
+                    &LoadValidUserDisplay($uname);
+                    $usernamelinkbcc =
+                      ${ $uid . $uname }{'realname'}
+                      ? &CreateUserDisplayLine($uname)
+                      : (
+                          $uname ? qq~$uname ($maintxt{'470a'})~
+                        : $maintxt{'470a'}
+                      );
+                }
             }
+            if ($usernamelinkbcc) {
+                $toTitleBCC = qq~$inmes_txt{'326'}:~;
+            }
+        }
 
-      } elsif ($INFO{'caller'} == 3) {
-            if ($mstatus !~ /b/) {
-                  if ($mstatus !~ /gr/) {
-                        foreach my $uname (split(/,/, $mtousers)) {
-                              &LoadValidUserDisplay($uname);
-                              $usernamelinkto .= (${$uid.$uname}{'realname'} ? &CreateUserDisplayLine($uname) : ($uname ? qq~$uname ($maintxt{'470a'})~ : $maintxt{'470a'})) . ', '; # 470a == Ex-Member
-                        }
-                  } else {
-                        my ($guestName, $guestEmail) = split(/ /, $mtousers);
-                        $guestName =~ s/%20/ /g;
-                        $usernamelinkto = qq~$guestName (<a href="mailto:$guestEmail">$guestEmail</a>)~;
-                  }
-                  $toTitle = qq~$inmes_txt{'324'}:~;
-                  if ($mccusers && $musername eq $username) {
-                        foreach my $uname (split(/,/, $mccusers)) {
-                              &LoadValidUserDisplay($uname);
-                              $usernamelinkcc .= (${$uid.$uname}{'realname'} ? &CreateUserDisplayLine($uname) : ($uname ? qq~$uname ($maintxt{'470a'})~ : $maintxt{'470a'})) . ', '; # 470a == Ex-Member
-                        }
-                        $usernamelinkcc =~ s/, $//;
-                        $toTitleCC = qq~$inmes_txt{'325'}:~;
-                  }
-                  if ($mbccusers && $musername eq $username) {
-                        foreach my $uname (split(/,/, $mbccusers)) {
-                              &LoadValidUserDisplay($uname);
-                              $usernamelinkbcc .= (${$uid.$uname}{'realname'} ? &CreateUserDisplayLine($uname) : ($uname ? qq~$uname ($maintxt{'470a'})~ : $maintxt{'470a'})) . ', '; # 470a == Ex-Member
-                        }
-                        $usernamelinkbcc =~ s/, $//;
-                        $toTitleBCC = qq~$inmes_txt{'326'}:~;
-                  }
-            } else {
-                  foreach my $uname (split(/,/, $mtousers)) {
-                        if ($uname eq 'all') { $usernamelinkto .= qq~<b>$inmes_txt{'bmallmembers'}</b>~ . ', ';
-                        } elsif ($uname eq 'mods') { $usernamelinkto .= qq~<b>$inmes_txt{'bmmods'}</b>~ . ', ';
-                        } elsif ($uname eq 'gmods') { $usernamelinkto .= qq~<b>$inmes_txt{'bmgmods'}</b>~ . ', ';
-                        } elsif ($uname eq 'admins') { $usernamelinkto .= qq~<b>$inmes_txt{'bmadmins'}</b>~ . ', ';
-                        } else {
-                              my ($title, undef) = split(/\|/, $NoPost{$uname}, 2);
-                              $usernamelinkto .= qq~<b>$title</b>~ . ', ';
-                        }
-                  }
-                  $toTitle = qq~$inmes_txt{'324'} $inmes_txt{'327'}:~;
-            }
-            $usernamelinkto =~ s/, $//;
-
-            if ($mstatus eq 'g') {
-                  my ($guestName, $guestEmail) = split(/ /, $musername);
-                  $guestName =~ s/%20/ /g;
-                  $usernamelinkfrom = qq~$guestName (<a href="mailto:$guestEmail">$guestEmail</a>)~;
-            } else {
-                  &LoadValidUserDisplay($musername);
-                  $usernamelinkfrom = ${$uid.$musername}{'realname'} ? &CreateUserDisplayLine($musername) : ($musername ? qq~$musername ($maintxt{'470a'})~ : $maintxt{'470a'}); # 470a == Ex-Member
-            }
-            $fromTitle = qq~$inmes_txt{'318'}:~;
-
-      } elsif ($INFO{'caller'} == 5 && $mstatus eq 'g') {
-            my ($guestName, $guestEmail) = split(/ /, $musername);
+        if ( $mstatus eq 'g' ) {
+            my ( $guestName, $guestEmail ) = split( / /, $musername );
             $guestName =~ s/%20/ /g;
-            $usernamelinkfrom = qq~$guestName (<a href="mailto:$guestEmail">$guestEmail</a>)~;
-            $fromTitle = qq~$inmes_txt{'318'}:~;
-
-      } elsif ($INFO{'caller'} == 5 && $mstatus =~ /b/) {
-            if ($mtousers) {
-                  foreach my $uname (split(/,/, $mtousers)) {
-                        if ($uname eq 'all') { $usernamelinkto .= qq~<b>$inmes_txt{'bmallmembers'}</b>~ . ', ';
-                        } elsif ($uname eq 'mods') { $usernamelinkto .= qq~<b>$inmes_txt{'bmmods'}</b>~ . ', ';
-                        } elsif ($uname eq 'gmods') { $usernamelinkto .= qq~<b>$inmes_txt{'bmgmods'}</b>~ . ', ';
-                        } elsif ($uname eq 'admins') { $usernamelinkto .= qq~<b>$inmes_txt{'bmadmins'}</b>~ . ', ';
-                        } else {
-                              my ($title, undef) = split(/\|/, $NoPost{$uname}, 2);
-                              $usernamelinkto .= qq~<b>$title</b>~ . ', ';
-                        }
-                  }
-                  $usernamelinkto =~ s/, $//;
-                  $toTitle = qq~$inmes_txt{'324'} $inmes_txt{'327'}:~;
-            }
-
+            $usernamelinkfrom =
+              qq~$guestName (<a href="mailto:$guestEmail">$guestEmail</a>)~;
+        }
+        else {
             &LoadValidUserDisplay($musername);
-            $usernamelinkfrom = ${$uid.$musername}{'realname'} ? &CreateUserDisplayLine($musername) : ($musername ? qq~$musername ($maintxt{'470a'})~ : $maintxt{'470a'}); # 470a == Ex-Member
+            $usernamelinkfrom =
+              ${ $uid . $musername }{'realname'}
+              ? &CreateUserDisplayLine($musername)
+              : (
+                  $musername ? qq~$musername ($maintxt{'470a'})~
+                : $maintxt{'470a'}
+              );    # 470a == Ex-Member
+        }
+        $fromTitle = qq~$inmes_txt{'318'}:~;
 
-            $fromTitle = qq~$inmes_txt{'318'}:~;
-      }
+    }
+    elsif ( $INFO{'caller'} == 2 ) {
+        &LoadValidUserDisplay($musername);
+        $usernamelinkfrom =
+          ${ $uid . $musername }{'realname'}
+          ? &CreateUserDisplayLine($musername)
+          : (
+            $musername ? qq~$musername ($maintxt{'470a'})~ : $maintxt{'470a'} )
+          ;         # 470a == Ex-Member
+        $fromTitle = qq~$inmes_txt{'318'}:~;
 
-      $PMnav = &buildPMNavigator;
+        if ( $mstatus !~ /b/ ) {
+            if ( $mstatus !~ /gr/ ) {
+                foreach my $uname ( split( /,/, $mtousers ) ) {
+                    &LoadValidUserDisplay($uname);
+                    $usernamelinkto .= (
+                        ${ $uid . $uname }{'realname'}
+                        ? &CreateUserDisplayLine($uname)
+                        : (
+                              $uname ? qq~$uname ($maintxt{'470a'})~
+                            : $maintxt{'470a'}
+                        )
+                    ) . ', ';    # 470a == Ex-Member
+                }
+            }
+            else {
+                my ( $guestName, $guestEmail ) = split( / /, $mtousers );
+                $guestName =~ s/%20/ /g;
+                $usernamelinkto =
+                  qq~$guestName (<a href="mailto:$guestEmail">$guestEmail</a>)~;
+            }
+            $toTitle = qq~$inmes_txt{'324'}:~;
+        }
+        else {
+            foreach my $uname ( split( /,/, $mtousers ) ) {
+                if ( $uname eq 'all' ) {
+                    $usernamelinkto .=
+                      qq~<b>$inmes_txt{'bmallmembers'}</b>~ . ', ';
+                }
+                elsif ( $uname eq 'mods' ) {
+                    $usernamelinkto .= qq~<b>$inmes_txt{'bmmods'}</b>~ . ', ';
+                }
+                elsif ( $uname eq 'gmods' ) {
+                    $usernamelinkto .= qq~<b>$inmes_txt{'bmgmods'}</b>~ . ', ';
+                }
+                elsif ( $uname eq 'admins' ) {
+                    $usernamelinkto .= qq~<b>$inmes_txt{'bmadmins'}</b>~ . ', ';
+                }
+                else {
+                    my ( $title, undef ) = split( /\|/, $NoPost{$uname}, 2 );
+                    $usernamelinkto .= qq~<b>$title</b>~ . ', ';
+                }
+            }
+            $toTitle = qq~$inmes_txt{'324'} $inmes_txt{'327'}:~;
+        }
+        $usernamelinkto =~ s/, $//;
+        if ($mccusers) {
+            foreach my $uname ( split( /,/, $mccusers ) ) {
+                &LoadValidUserDisplay($uname);
+                $usernamelinkcc .= (
+                    ${ $uid . $uname }{'realname'}
+                    ? &CreateUserDisplayLine($uname)
+                    : (
+                          $uname ? qq~$uname ($maintxt{'470a'})~
+                        : $maintxt{'470a'}
+                    )
+                ) . ', ';    # 470a == Ex-Member
+            }
+            $usernamelinkcc =~ s/, $//;
+            $toTitleCC = qq~$inmes_txt{'325'}:~;
+        }
+        if ($mbccusers) {
+            foreach my $uname ( split( /,/, $mbccusers ) ) {
+                &LoadValidUserDisplay($uname);
+                $usernamelinkbcc .= (
+                    ${ $uid . $uname }{'realname'}
+                    ? &CreateUserDisplayLine($uname)
+                    : (
+                          $uname ? qq~$uname ($maintxt{'470a'})~
+                        : $maintxt{'470a'}
+                    )
+                ) . ', ';    # 470a == Ex-Member
+            }
+            $usernamelinkbcc =~ s/, $//;
+            $toTitleBCC = qq~$inmes_txt{'326'}:~;
+        }
 
-      &ToChars($msub);
-      $msub = &Censor($msub);
+    }
+    elsif ( $INFO{'caller'} == 3 ) {
+        if ( $mstatus !~ /b/ ) {
+            if ( $mstatus !~ /gr/ ) {
+                foreach my $uname ( split( /,/, $mtousers ) ) {
+                    &LoadValidUserDisplay($uname);
+                    $usernamelinkto .= (
+                        ${ $uid . $uname }{'realname'}
+                        ? &CreateUserDisplayLine($uname)
+                        : (
+                              $uname ? qq~$uname ($maintxt{'470a'})~
+                            : $maintxt{'470a'}
+                        )
+                    ) . ', ';    # 470a == Ex-Member
+                }
+            }
+            else {
+                my ( $guestName, $guestEmail ) = split( / /, $mtousers );
+                $guestName =~ s/%20/ /g;
+                $usernamelinkto =
+                  qq~$guestName (<a href="mailto:$guestEmail">$guestEmail</a>)~;
+            }
+            $toTitle = qq~$inmes_txt{'324'}:~;
+            if ( $mccusers && $musername eq $username ) {
+                foreach my $uname ( split( /,/, $mccusers ) ) {
+                    &LoadValidUserDisplay($uname);
+                    $usernamelinkcc .= (
+                        ${ $uid . $uname }{'realname'}
+                        ? &CreateUserDisplayLine($uname)
+                        : (
+                              $uname ? qq~$uname ($maintxt{'470a'})~
+                            : $maintxt{'470a'}
+                        )
+                    ) . ', ';    # 470a == Ex-Member
+                }
+                $usernamelinkcc =~ s/, $//;
+                $toTitleCC = qq~$inmes_txt{'325'}:~;
+            }
+            if ( $mbccusers && $musername eq $username ) {
+                foreach my $uname ( split( /,/, $mbccusers ) ) {
+                    &LoadValidUserDisplay($uname);
+                    $usernamelinkbcc .= (
+                        ${ $uid . $uname }{'realname'}
+                        ? &CreateUserDisplayLine($uname)
+                        : (
+                              $uname ? qq~$uname ($maintxt{'470a'})~
+                            : $maintxt{'470a'}
+                        )
+                    ) . ', ';    # 470a == Ex-Member
+                }
+                $usernamelinkbcc =~ s/, $//;
+                $toTitleBCC = qq~$inmes_txt{'326'}:~;
+            }
+        }
+        else {
+            foreach my $uname ( split( /,/, $mtousers ) ) {
+                if ( $uname eq 'all' ) {
+                    $usernamelinkto .=
+                      qq~<b>$inmes_txt{'bmallmembers'}</b>~ . ', ';
+                }
+                elsif ( $uname eq 'mods' ) {
+                    $usernamelinkto .= qq~<b>$inmes_txt{'bmmods'}</b>~ . ', ';
+                }
+                elsif ( $uname eq 'gmods' ) {
+                    $usernamelinkto .= qq~<b>$inmes_txt{'bmgmods'}</b>~ . ', ';
+                }
+                elsif ( $uname eq 'admins' ) {
+                    $usernamelinkto .= qq~<b>$inmes_txt{'bmadmins'}</b>~ . ', ';
+                }
+                else {
+                    my ( $title, undef ) = split( /\|/, $NoPost{$uname}, 2 );
+                    $usernamelinkto .= qq~<b>$title</b>~ . ', ';
+                }
+            }
+            $toTitle = qq~$inmes_txt{'324'} $inmes_txt{'327'}:~;
+        }
+        $usernamelinkto =~ s/, $//;
 
-      $message = $immessage;
-      &wrap;
-      if ($enable_ubbc) {
-            if (!$yyYaBBCloaded) { require "$sourcedir/YaBBC.pl"; }
-            &DoUBBC;
-      }
-      &wrap2;
-      &ToChars($message);
-      $message = &Censor($message);
+        if ( $mstatus eq 'g' ) {
+            my ( $guestName, $guestEmail ) = split( / /, $musername );
+            $guestName =~ s/%20/ /g;
+            $usernamelinkfrom =
+              qq~$guestName (<a href="mailto:$guestEmail">$guestEmail</a>)~;
+        }
+        else {
+            &LoadValidUserDisplay($musername);
+            $usernamelinkfrom =
+              ${ $uid . $musername }{'realname'}
+              ? &CreateUserDisplayLine($musername)
+              : (
+                  $musername ? qq~$musername ($maintxt{'470a'})~
+                : $maintxt{'470a'}
+              );    # 470a == Ex-Member
+        }
+        $fromTitle = qq~$inmes_txt{'318'}:~;
 
-      $avstyle = '';
+    }
+    elsif ( $INFO{'caller'} == 5 && $mstatus eq 'g' ) {
+        my ( $guestName, $guestEmail ) = split( / /, $musername );
+        $guestName =~ s/%20/ /g;
+        $usernamelinkfrom =
+          qq~$guestName (<a href="mailto:$guestEmail">$guestEmail</a>)~;
+        $fromTitle = qq~$inmes_txt{'318'}:~;
 
-      $showIM = qq~
+    }
+    elsif ( $INFO{'caller'} == 5 && $mstatus =~ /b/ ) {
+        if ($mtousers) {
+            foreach my $uname ( split( /,/, $mtousers ) ) {
+                if ( $uname eq 'all' ) {
+                    $usernamelinkto .=
+                      qq~<b>$inmes_txt{'bmallmembers'}</b>~ . ', ';
+                }
+                elsif ( $uname eq 'mods' ) {
+                    $usernamelinkto .= qq~<b>$inmes_txt{'bmmods'}</b>~ . ', ';
+                }
+                elsif ( $uname eq 'gmods' ) {
+                    $usernamelinkto .= qq~<b>$inmes_txt{'bmgmods'}</b>~ . ', ';
+                }
+                elsif ( $uname eq 'admins' ) {
+                    $usernamelinkto .= qq~<b>$inmes_txt{'bmadmins'}</b>~ . ', ';
+                }
+                else {
+                    my ( $title, undef ) = split( /\|/, $NoPost{$uname}, 2 );
+                    $usernamelinkto .= qq~<b>$title</b>~ . ', ';
+                }
+            }
+            $usernamelinkto =~ s/, $//;
+            $toTitle = qq~$inmes_txt{'324'} $inmes_txt{'327'}:~;
+        }
+
+        &LoadValidUserDisplay($musername);
+        $usernamelinkfrom =
+          ${ $uid . $musername }{'realname'}
+          ? &CreateUserDisplayLine($musername)
+          : (
+            $musername ? qq~$musername ($maintxt{'470a'})~ : $maintxt{'470a'} )
+          ;    # 470a == Ex-Member
+
+        $fromTitle = qq~$inmes_txt{'318'}:~;
+    }
+
+    $PMnav = &buildPMNavigator;
+
+    &ToChars($msub);
+    $msub = &Censor($msub);
+
+    $message = $immessage;
+    &wrap;
+    if ($enable_ubbc) {
+        if ( !$yyYaBBCloaded ) { require "$sourcedir/YaBBC.pl"; }
+        &DoUBBC;
+    }
+    &wrap2;
+    &ToChars($message);
+    $message = &Censor($message);
+
+    $avstyle = '';
+
+    $showIM = qq~
 <table border="0" width="100%" cellspacing="1" cellpadding="1" class="bordercolor" style="table-layout: fixed">
 <tr>
       <td class="windowbg" align="left" valign="top" colspan="2">
             <div style="width: 99%; padding: 2px; margin: 2px;">
       ~;
 
-      if ($fromTitle) {
-            $showIM .= qq~
+    if ($fromTitle) {
+        $showIM .= qq~
             <span class="small" style="width: 99%;">
             <b>$fromTitle</b> $usernamelinkfrom
             </span><br />
             ~;
-      }
+    }
 
-      if ($toTitle) {
-            $showIM .= qq~
+    if ($toTitle) {
+        $showIM .= qq~
             <span class="small" style="width: 99%;">
             <b>$toTitle</b> $usernamelinkto
             </span><br />
             ~;
-      }
+    }
 
-      if ($toTitleCC) {
-            $showIM .= qq~
+    if ($toTitleCC) {
+        $showIM .= qq~
             <span class="small" style="width: 99%;">
             <b>$toTitleCC</b> $usernamelinkcc
             </span><br />
             ~;
-      }
+    }
 
-      if ($toTitleBCC) {
-            $showIM .= qq~
+    if ($toTitleBCC) {
+        $showIM .= qq~
             <span class="small" style="width: 99%;">
             <b>$toTitleBCC</b> $usernamelinkbcc
             </span><br />
             ~;
-      }
+    }
 
-      $showIM .= qq~
+    $showIM .= qq~
             </div>
       </td>
 </tr>
@@ -2145,8 +2570,8 @@ sub DoShowIM {
 </tr>
 ~;
 
-      if ($signature) {
-            $showIM .= qq~
+    if ($signature) {
+        $showIM .= qq~
 <tr>
       <td class="windowbg2" align="right" colspan="2">
       <div style="float: left; width: 99%; padding-top: 2px; margin-top: 2px; text-align: left;">
@@ -2154,15 +2579,17 @@ sub DoShowIM {
       </div>
       </td>
 </tr>~;
-      }
+    }
 
-      if ($iamadmin || $iamgmod && $gmod_access2{'ipban2'} eq 'on') { $imip = $imip; }
-      else { $imip = $inmes_txt{'511'}; }
+    if ( $iamadmin || $iamgmod && $gmod_access2{'ipban2'} eq 'on' ) {
+        $imip = $imip;
+    }
+    else { $imip = $inmes_txt{'511'}; }
 
-      my $postMenuTemp = $sendEmail . $sendPM . $membAdInfo . "&nbsp;";
-      $postMenuTemp =~ s/\Q$menusep//i;
+    my $postMenuTemp = $sendEmail . $sendPM . $membAdInfo . "&nbsp;";
+    $postMenuTemp =~ s/\Q$menusep//i;
 
-      $showIM .= qq~
+    $showIM .= qq~
 <tr>
       <td class="windowbg" align="right" colspan="2">
       <div style="float: left; width: 99%; padding-top: 5px; margin-top: 2px; text-align: right;">
@@ -2178,38 +2605,52 @@ sub DoShowIM {
       <div style="float: right; text-align: right; width: 40%; padding: 2px; margin: 2px;">
       <span class="small">~;
 
-      $mreplyno++;
-      if ($INFO{'caller'} == 1 || ($INFO{'caller'} == 3 && $musername ne '') || ($INFO{'caller'} == 5 && $musername ne '')) { ## inbox / stored inbox can reply/quote
-            if ($mstatus eq 'g') {
-                  $showIM .= qq~<a href="$scripturl?action=imsend;caller=$INFO{'caller'};quote=$mreplyno;replyguest=1;id=$messageid">$img{'reply_ims'}</a>~;
-            } else {
-                  $showIM .= qq~
+    $mreplyno++;
+    if (   $INFO{'caller'} == 1
+        || ( $INFO{'caller'} == 3 && $musername ne '' )
+        || ( $INFO{'caller'} == 5 && $musername ne '' ) )
+    {    ## inbox / stored inbox can reply/quote
+        if ( $mstatus eq 'g' ) {
+            $showIM .=
+qq~<a href="$scripturl?action=imsend;caller=$INFO{'caller'};quote=$mreplyno;replyguest=1;id=$messageid">$img{'reply_ims'}</a>~;
+        }
+        else {
+            $showIM .= qq~
                   <a href="$scripturl?action=imsend;caller=$INFO{'caller'};quote=$mreplyno;to=$useraccount{$musername};id=$messageid">$img{'quote'}</a>$menusep
                   <a href="$scripturl?action=imsend;caller=$INFO{'caller'};reply=$mreplyno;to=$useraccount{$musername};id=$messageid">$img{'reply_ims'}</a>$menusep~;
-            }
-      }
+        }
+    }
 
-      if ($INFO{'caller'} != 5) {
-            $showIM .= qq~
+    if ( $INFO{'caller'} != 5 ) {
+        $showIM .= qq~
                   <a href="$scripturl?action=imsend;caller=$INFO{'caller'};quote=$mreplyno;forward=1;id=$messageid">$img{'forward'}</a>$menusep~;
-      }
+    }
 
-      if ($INFO{'caller'} != 5 || ($INFO{'caller'} == 5 && ($iamadmin || $username eq $musername))) {
-            $showIM .= qq~
+    if ( $INFO{'caller'} != 5
+        || ( $INFO{'caller'} == 5 && ( $iamadmin || $username eq $musername ) )
+      )
+    {
+        $showIM .= qq~
                   <a href="$scripturl?action=deletemultimessages;caller=$INFO{'caller'};deleteid=$messageid" onclick="return confirm('$inmes_txt{'770'}');">$img{'im_remove'}</a>
             ~;
-      }
+    }
 
-      my $notme = $musername eq $username ? $mtousers : $musername;
-      $notme = ${$uid.$notme}{'realname'};
-      $showIM .= qq~
+    my $notme = $musername eq $username ? $mtousers : $musername;
+    $notme = ${ $uid . $notme }{'realname'};
+    $showIM .= qq~
       </span>
       </div>
       </td>
 </tr>
 <tr>
 <td align="right" class="windowbg2" colspan="2">
-      <div style="float: left; text-align: left; padding: 2px; margin: 2px;"><span class="small">~ . ($notme ? qq~<a href="$scripturl?action=pmsearch;searchtype=user;search=$notme">$inmes_imtxt{'42'} <i>$notme</i></a>~ : "&nbsp;") . qq~</span></div>
+      <div style="float: left; text-align: left; padding: 2px; margin: 2px;"><span class="small">~
+      . (
+        $notme
+        ? qq~<a href="$scripturl?action=pmsearch;searchtype=user;search=$notme">$inmes_imtxt{'42'} <i>$notme</i></a>~
+        : "&nbsp;"
+      )
+      . qq~</span></div>
       <div style="float: right; text-align: right; padding: 2px; margin: 2px;"><span class="small">$PMnav</span></div>
 </td>
 </tr>
@@ -2218,61 +2659,72 @@ sub DoShowIM {
 </div>
 ~;
 
-      return $showIM;
+    return $showIM;
 }
 
 ## build the links for single PM display
 sub buildPMNavigator {
-      if ($previd ne '') { $PMnav = qq~$previd~; }
-      if ($allid ne '' && $previd ne '') { $PMnav .= qq~ | $allid~; }
-      elsif ($allid ne '') { $PMnav = qq~$allid~; }
-      if ($nextid ne '' && $allid ne '') { $PMnav .= qq~ | $nextid~; }
-      return $PMnav;
+    if ( $previd ne '' ) { $PMnav = qq~$previd~; }
+    if ( $allid ne '' && $previd ne '' ) { $PMnav .= qq~ | $allid~; }
+    elsif ( $allid ne '' ) { $PMnav = qq~$allid~; }
+    if ( $nextid ne '' && $allid ne '' ) { $PMnav .= qq~ | $nextid~; }
+    return $PMnav;
 }
 
 ## show original PM/BM or the PM/BM before Preview at the bottom of the massage field
 sub doshowims {
-      my $tempdate;
-      if ($INFO{'id'} && !$INFO{'replyguest'}) {
-            my $messageCount = 0;
-            my $messageFoundFlag = 0;
-            foreach my $message (@messages) {
-                  my $tmnum = (split /\|/, $message)[0];
-                  if ($tmnum == $INFO{'id'}) { $messageFoundFlag = 1; last; }
-                  else  {$messageCount ++;}
-            }
-            ## as a backup, if its not found that way, revert to the list member
-            if (!$messageFoundFlag) { $messageCount = $INFO{'num'}; }
-            ($messageid, $musername, $mto, $mtocc, $mtobcc, $msub, $mdate, $message, $mparid, $mreplyno, $mip, $mstatus, $mflags, $mstore, $mattach) = split(/\|/, $messages[$messageCount]);
-            $tempdate = &timeformat($mdate);
+    my $tempdate;
+    if ( $INFO{'id'} && !$INFO{'replyguest'} ) {
+        my $messageCount     = 0;
+        my $messageFoundFlag = 0;
+        foreach my $message (@messages) {
+            my $tmnum = ( split /\|/, $message )[0];
+            if ( $tmnum == $INFO{'id'} ) { $messageFoundFlag = 1; last; }
+            else                         { $messageCount++; }
+        }
+        ## as a backup, if its not found that way, revert to the list member
+        if ( !$messageFoundFlag ) { $messageCount = $INFO{'num'}; }
+        (
+            $messageid, $musername, $mto,     $mtocc,  $mtobcc,
+            $msub,      $mdate,     $message, $mparid, $mreplyno,
+            $mip,       $mstatus,   $mflags,  $mstore, $mattach
+        ) = split( /\|/, $messages[$messageCount] );
+        $tempdate = &timeformat($mdate);
 
-      } else {
-            return;
-      }
+    }
+    else {
+        return;
+    }
 
-      &ToChars($msub);
-      $msub = &Censor($msub);
+    &ToChars($msub);
+    $msub = &Censor($msub);
 
-      &wrap;
-      if ($enable_ubbc) {
-            if (!$yyYaBBCloaded) { require "$sourcedir/YaBBC.pl"; }
-            &DoUBBC;
-      }
-      &wrap2;
-      &ToChars($message);
-      $message = &Censor($message);
+    &wrap;
+    if ($enable_ubbc) {
+        if ( !$yyYaBBCloaded ) { require "$sourcedir/YaBBC.pl"; }
+        &DoUBBC;
+    }
+    &wrap2;
+    &ToChars($message);
+    $message = &Censor($message);
 
-      if (!${$uid.$musername}{'password'}) { &LoadUser($musername); }
-      my $musernameRealName = ${$uid.$musername}{'realname'};
-      if(!$musernameRealName) { $musernameRealName = $musername; }
+    if ( !${ $uid . $musername }{'password'} ) { &LoadUser($musername); }
+    my $musernameRealName = ${ $uid . $musername }{'realname'};
+    if ( !$musernameRealName ) { $musernameRealName = $musername; }
 
-      $imsend .= qq~
+    $imsend .= qq~
       <tr>
         <td class="windowbg">
             <table cellspacing="1" cellpadding="0" width="100%" align="center" class="bordercolor"><tr><td>
                   <table class="windowbg" cellspacing="0" cellpadding="2" width="100%" align="center" style="table-layout:fixed">
                         <tr><td class="titlebg" colspan="2"><b>$inmes_txt{'70'}: $msub</b></td></tr>
-                        <tr><td align="left" class="catbg"><span class="small">$inmes_txt{'318'}: $musernameRealName</span></td><td class="catbg" align="right"><span class="small">~ . (($INFO{'id'} && $INFO{'caller'} != 4) ? "$inmes_txt{'30'}: " : ($INFO{'id'} ? "$inmes_txt{'savedraft'} $inmes_txt{'30'}: " : "")) . qq~$tempdate</span></td></tr>
+                        <tr><td align="left" class="catbg"><span class="small">$inmes_txt{'318'}: $musernameRealName</span></td><td class="catbg" align="right"><span class="small">~
+      . (
+        ( $INFO{'id'} && $INFO{'caller'} != 4 )
+        ? "$inmes_txt{'30'}: "
+        : ( $INFO{'id'} ? "$inmes_txt{'savedraft'} $inmes_txt{'30'}: " : "" )
+      )
+      . qq~$tempdate</span></td></tr>
                         <tr><td class="windowbg2" colspan="2"><div class="message" style="float:left; width:100%;">$message</div></td></tr>
                   </table></td></tr>
             </table>

@@ -1,5 +1,6 @@
 ###############################################################################
 # Mailer.pl                                                                   #
+# $Date: 9/20/2012 $                                                          #
 ###############################################################################
 # YaBB: Yet another Bulletin Board                                            #
 # Open-Source Community Software for Webmasters                               #
@@ -11,74 +12,85 @@
 # Software by:  The YaBB Development Team                                     #
 #               with assistance from the YaBB community.                      #
 ###############################################################################
+# use strict;
+# use warnings;
+no warnings qw(uninitialized once redefine);
+use CGI::Carp qw(fatalsToBrowser);
+use English '-no_match_vars';
+our $VERSION = 1.0;
 
 $mailerplver = 'YaBB 2.6 $Revision: 1.0 $';
-if ($action eq 'detailedversion') { return 1; }
+if ( $action eq 'detailedversion' ) { return 1; }
 
 sub sendmail {
-      my ($to, $subject, $message, $from, $mailcharset) = @_;
+    my ( $to, $subject, $message, $from, $mailcharset ) = @_;
 
-      # Do a FromHTML here for $to, and for $mbname
-      # Just in case has special chars like & in addresses
-      &FromHTML($to);
-      &FromHTML($mbname);
+    # Do a FromHTML here for $to, and for $mbname
+    # Just in case has special chars like & in addresses
+    &FromHTML($to);
+    &FromHTML($mbname);
 
-      # Change commas to HTML entity - ToHTML doesn't catch this
-      # It's only a problem when sending emails, so no change to ToHTML.
-      $mbname =~ s/,/&#44;/ig;
+    # Change commas to HTML entity - ToHTML doesn't catch this
+    # It's only a problem when sending emails, so no change to ToHTML.
+    $mbname =~ s/,/&#44;/ig;
 
-      $charsetheader = $mailcharset ? $mailcharset : $yycharset;
+    $charsetheader = $mailcharset ? $mailcharset : $yycharset;
 
-      if (!$from) {
-            $from = $webmaster_email;
-            $fromheader = "$mbname <$from>";
-      } else {
-            $fromheader = $from;
-      }
+    if ( !$from ) {
+        $from       = $webmaster_email;
+        $fromheader = "$mbname <$from>";
+    }
+    else {
+        $fromheader = $from;
+    }
 
-      if (!$to) {
-            $to = $webmaster_email;
-            $toheader = "$mbname $smtp_txt{'555'} <$to>";
-      } else {
-            $to =~ s/[ \t]+/, /g;
-            $toheader = $to;
-      }
+    if ( !$to ) {
+        $to       = $webmaster_email;
+        $toheader = "$mbname $smtp_txt{'555'} <$to>";
+    }
+    else {
+        $to =~ s/[ \t]+/, /g;
+        $toheader = $to;
+    }
 
-      $message =~ s/^\./../m;
-      $message =~ s/[\r\n]/\n/g;
+    $message =~ s/^\./../m;
+    $message =~ s/[\r\n]/\n/g;
 
-      if ($mailtype == 0) {
-            open(MAIL, "|$mailprog -t");
-            print MAIL "To: $toheader\n";
-            print MAIL "From: $fromheader\n";
-            print MAIL "X-Mailer: YaBB Sendmail\n";
-            print MAIL "Subject: $subject\n";
-            print MAIL "Content-Type: text/plain\; charset=$charsetheader\n\n";
-            $message =~ s/\r\n/\n/g;
-            print MAIL "$message\n";
-            close(MAIL);
-            return 1;
+    if ( $mailtype == 0 ) {
+        open( MAIL, "|$mailprog -t" );
+        print MAIL "To: $toheader\n";
+        print MAIL "From: $fromheader\n";
+        print MAIL "X-Mailer: YaBB Sendmail\n";
+        print MAIL "Subject: $subject\n";
+        print MAIL "Content-Type: text/plain\; charset=$charsetheader\n\n";
+        $message =~ s/\r\n/\n/g;
+        print MAIL "$message\n";
+        close(MAIL);
+        return 1;
 
-      } elsif ($mailtype == 1) {
-            $smtp_to = $to;
-            $smtp_from = $from;
-            $smtp_message = $message;
-            $smtp_subject = $subject;
-            $smtp_charset = $charsetheader;
-            require "$sourcedir/Smtp.pl";
-            &use_smtp;
+    }
+    elsif ( $mailtype == 1 ) {
+        $smtp_to      = $to;
+        $smtp_from    = $from;
+        $smtp_message = $message;
+        $smtp_subject = $subject;
+        $smtp_charset = $charsetheader;
+        require "$sourcedir/Smtp.pl";
+        &use_smtp;
 
-      } elsif ($mailtype == 2 || $mailtype == 3) {
-            my $smtp;
-            my @arg = ("$smtp_server", Hello => "$smtp_server", Timeout => 30);
-            if ($mailtype == 2) {
-                  eval q^
+    }
+    elsif ( $mailtype == 2 || $mailtype == 3 ) {
+        my $smtp;
+        my @arg = ( "$smtp_server", Hello => "$smtp_server", Timeout => 30 );
+        if ( $mailtype == 2 ) {
+            eval q^
                         eval 'use Net::SMTP;';
                         push(@arg, Debug => 0);
                         $smtp = Net::SMTP->new(@arg) || die "Unable to create Net::SMTP object. Server: '$smtp_server'\n\n" . $!;
                   ^;
-            } else {
-                  eval q^
+        }
+        else {
+            eval q^
                         use Net::SMTP::TLS;';
                         my $port = 25;
                         if ($smtp_server =~ s/:(\d+)$//) { $port = $1; }
@@ -87,10 +99,12 @@ sub sendmail {
                         push(@arg, Password => "$authpass") if $authpass;
                         $smtp = Net::SMTP::TLS->new(@arg) || die "Unable to create Net::SMTP::TLS object. Server: '$smtp_server', port '$port'\n\n" . $!;
                   ^;
-            }
-            if ($@) { &fatal_error("net_fatal","$error_txt{'error_verbose'}: $@"); }
+        }
+        if ($@) {
+            &fatal_error( "net_fatal", "$error_txt{'error_verbose'}: $@" );
+        }
 
-            eval q^
+        eval q^
                   $smtp->mail($from);
                   foreach (split(/, /, $to)) { $smtp->to($_); }
                   $smtp->data();
@@ -104,23 +118,27 @@ sub sendmail {
                   $smtp->dataend();
                   $smtp->quit();
             ^;
-            if ($@) { &fatal_error("net_fatal","$error_txt{'error_verbose'}: $@"); }
-            return 1;
+        if ($@) {
+            &fatal_error( "net_fatal", "$error_txt{'error_verbose'}: $@" );
+        }
+        return 1;
 
-      } elsif ($mailtype == 4) {
-            # Dummy mail engine
-            fopen(MAIL, ">>$vardir/mail.log");
-            print MAIL "Mail sent at " . scalar localtime() . "\n";
-            print MAIL "To: $toheader\n";
-            print MAIL "From: $fromheader\n";
-            print MAIL "X-Mailer: YaBB Sendmail\n";
-            print MAIL "Subject: $subject\n\n";
-            $message =~ s/\r\n/\n/g;
-            print MAIL "$message\n";
-            print MAIL "End of Message\n\n";
-            fclose(MAIL);
-            return 1;
-      }
+    }
+    elsif ( $mailtype == 4 ) {
+
+        # Dummy mail engine
+        fopen( MAIL, ">>$vardir/mail.log" );
+        print MAIL "Mail sent at " . scalar localtime() . "\n";
+        print MAIL "To: $toheader\n";
+        print MAIL "From: $fromheader\n";
+        print MAIL "X-Mailer: YaBB Sendmail\n";
+        print MAIL "Subject: $subject\n\n";
+        $message =~ s/\r\n/\n/g;
+        print MAIL "$message\n";
+        print MAIL "End of Message\n\n";
+        fclose(MAIL);
+        return 1;
+    }
 }
 
 # Before &sendmail is called, the message MUST be run through here.
@@ -132,12 +150,14 @@ sub sendmail {
 # Result (with $username being the actual username):
 #  Hello, $username! The answer is 42!
 sub template_email {
-      my ($message, $info) = @_;
-      foreach my $key (keys(%$info)) { $message =~ s/(<|{)yabb $key(}|>)/$info->{$key}/g; }
-      $message =~ s/(<|{)yabb scripturl(}|>)/$scripturl/g;
-      $message =~ s/(<|{)yabb adminurl(}|>)/$adminurl/g;
-      $message =~ s/(<|{)yabb mbname(}|>)/$mbname/g;
-      $message;
+    my ( $message, $info ) = @_;
+    foreach my $key ( keys(%$info) ) {
+        $message =~ s/(<|{)yabb $key(}|>)/$info->{$key}/g;
+    }
+    $message =~ s/(<|{)yabb scripturl(}|>)/$scripturl/g;
+    $message =~ s/(<|{)yabb adminurl(}|>)/$adminurl/g;
+    $message =~ s/(<|{)yabb mbname(}|>)/$mbname/g;
+    $message;
 }
 
 1;

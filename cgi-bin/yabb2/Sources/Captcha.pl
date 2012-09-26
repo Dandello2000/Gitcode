@@ -1,5 +1,6 @@
 ###############################################################################
 # Captcha.pl                                                                  #
+# $Date: 9/20/2012 $                                                          #
 ###############################################################################
 # YaBB: Yet another Bulletin Board                                            #
 # Open-Source Community Software for Webmasters                               #
@@ -11,9 +12,15 @@
 # Software by:  The YaBB Development Team                                     #
 #               with assistance from the YaBB community.                      #
 ###############################################################################
+# use strict;
+# use warnings;
+no warnings qw(uninitialized once redefine);
+use CGI::Carp qw(fatalsToBrowser);
+use English '-no_match_vars';
+our $VERSION = 1.0;
 
 $captchaplver = 'YaBB 2.6 $Revision: 1.0 $';
-if ($action eq 'detailedversion') { return 1; }
+if ( $action eq 'detailedversion' ) { return 1; }
 
 $| = 1;
 
@@ -29,105 +36,103 @@ $| = 1;
 # visit http://creativecommons.org/licenses/by-nc-sa/1.0/ or send a letter to
 # Creative Commons, 559 Nathan Abbott Way, Stanford, California 94305, USA.
 
-if(!$rgb_foreground){
-      $rgb_foreground = "0000EE";
+if ( !$rgb_foreground ) {
+    $rgb_foreground = "0000EE";
 }
 
-if(!$rgb_shade){
-      $rgb_shade = "999999";
+if ( !$rgb_shade ) {
+    $rgb_shade = "999999";
 }
 
-if(!$rgb_background){
-      $rgb_background = "FFFFFF";
+if ( !$rgb_background ) {
+    $rgb_background = "FFFFFF";
 }
 
 sub captcha {
-      my $msg = $_[0];
-      ## make colors for validation image into hex again ##
-      $rgb_foreground =~ s/\#//g;
-      $rgb_shade =~ s/\#//g;
-      $rgb_background =~ s/\#//g;
-      $r_f = substr($rgb_foreground,0,2);
-      $g_f = substr($rgb_foreground,2,2);
-      $b_f = substr($rgb_foreground,4,2);
-      $r_s = substr($rgb_shade,0,2);
-      $g_s = substr($rgb_shade,2,2);
-      $b_s = substr($rgb_shade,4,2);
-      $r_b = substr($rgb_background,0,2);
-      $g_b = substr($rgb_background,2,2);
-      $b_b = substr($rgb_background,4,2);
+    my $msg = $_[0];
+    ## make colors for validation image into hex again ##
+    $rgb_foreground =~ s/\#//g;
+    $rgb_shade      =~ s/\#//g;
+    $rgb_background =~ s/\#//g;
+    $r_f = substr( $rgb_foreground, 0, 2 );
+    $g_f = substr( $rgb_foreground, 2, 2 );
+    $b_f = substr( $rgb_foreground, 4, 2 );
+    $r_s = substr( $rgb_shade,      0, 2 );
+    $g_s = substr( $rgb_shade,      2, 2 );
+    $b_s = substr( $rgb_shade,      4, 2 );
+    $r_b = substr( $rgb_background, 0, 2 );
+    $g_b = substr( $rgb_background, 2, 2 );
+    $b_b = substr( $rgb_background, 4, 2 );
 
-      # color for center cross of the dots (RGB)
-      $highcolor = pack("H2",$r_f);
-      $highcolor .= pack("H2",$g_f);
-      $highcolor .= pack("H2",$b_f);
+    # color for center cross of the dots (RGB)
+    $highcolor = pack( "H2", $r_f );
+    $highcolor .= pack( "H2", $g_f );
+    $highcolor .= pack( "H2", $b_f );
 
-      # color for shade in the dots (RGB)
-      $shadecolor = pack("H2",$r_s);
-      $shadecolor .= pack("H2",$g_s);
-      $shadecolor .= pack("H2",$b_s);
+    # color for shade in the dots (RGB)
+    $shadecolor = pack( "H2", $r_s );
+    $shadecolor .= pack( "H2", $g_s );
+    $shadecolor .= pack( "H2", $b_s );
 
+    # color for background of the dots (RGB)
+    $backcolor = pack( "H2", $r_b );
+    $backcolor .= pack( "H2", $g_b );
+    $backcolor .= pack( "H2", $b_b );
 
-      # color for background of the dots (RGB)
-      $backcolor = pack("H2",$r_b);
-      $backcolor .= pack("H2",$g_b);
-      $backcolor .= pack("H2",$b_b);
+    if   ( !$translayer || $translayer == "0" ) { $TRANSPARENT_INDEX = "\3"; }
+    else                                        { $TRANSPARENT_INDEX = "\0"; }
 
-      if (!$translayer || $translayer == "0") { $TRANSPARENT_INDEX = "\3"; }
-      else { $TRANSPARENT_INDEX = "\0"; }
+    # Palette
 
-      # Palette
+    $BITS_PER_PIXEL = 7;    # DON'T CHANGE THIS!!!
 
-      $BITS_PER_PIXEL = 7;    # DON'T CHANGE THIS!!!
+ # A note about BITS_PER_PIXEL: GIF data is bit packed. For example, if the code
+ # size is 6 bits, then 4 codes can be packed into 3 bytes. This script does not
+ # implement bit packing. 7 bits per pixel translates into 8 bits per code which
+ # exactly matches a byte and therefore bit packing is not needed.
 
-      # A note about BITS_PER_PIXEL: GIF data is bit packed. For example, if the code
-      # size is 6 bits, then 4 codes can be packed into 3 bytes. This script does not
-      # implement bit packing. 7 bits per pixel translates into 8 bits per code which
-      # exactly matches a byte and therefore bit packing is not needed.
+    $palette .= "$backcolor";     # 0 = white
+    $palette .= "$shadecolor";    # 1 = grey
+    $palette .= "$highcolor";     # 2 = almost black
 
-      $palette .= "$backcolor";     # 0 = white
-      $palette .= "$shadecolor";    # 1 = grey
-      $palette .= "$highcolor";     # 2 = almost black
+    # Dot definition
+    # Defines a dot in terms of palette colours.
 
+    $DOT_WIDTH  = 3;
+    $DOT_HEIGHT = 3;
 
-      # Dot definition
-      # Defines a dot in terms of palette colours.
-
-      $DOT_WIDTH  = 3;
-      $DOT_HEIGHT = 3;
-
-      $dot = qq~
+    $dot = qq~
 \1\2\1
 \2\2\2
 \1\2\1
 ~;
-      $nodot = qq~
+    $nodot = qq~
 \0\0\0
 \0\0\0
 \0\0\0
 ~;
 
-      $invdot = qq~
+    $invdot = qq~
 \1\0\1
 \0\0\0
 \1\0\1
 ~;
-      $invnodot = qq~
+    $invnodot = qq~
 \1\1\1
 \1\1\1
 \1\1\1
 ~;
 
-      ###############################################
-      ###############################################
+    ###############################################
+    ###############################################
 
-      # Character definitions
-      my($CHAR_WIDTH, $CHAR_HEIGHT, %ci);
+    # Character definitions
+    my ( $CHAR_WIDTH, $CHAR_HEIGHT, %ci );
 
-      $CHAR_WIDTH  = 7;
-      $CHAR_HEIGHT = 10;
+    $CHAR_WIDTH  = 7;
+    $CHAR_HEIGHT = 10;
 
-$ci{' '} = qq~
+    $ci{' '} = qq~
 .......
 .......
 .......
@@ -139,7 +144,7 @@ $ci{' '} = qq~
 .......
 .......
 ~;
-$ci{'!'} = qq~
+    $ci{'!'} = qq~
 .......
 ...X...
 ...X...
@@ -151,7 +156,7 @@ $ci{'!'} = qq~
 .......
 .......
 ~;
-$ci{'"'} = qq~
+    $ci{'"'} = qq~
 .......
 ..X.X..
 ..X.X..
@@ -163,7 +168,7 @@ $ci{'"'} = qq~
 .......
 .......
 ~;
-$ci{'#'} = qq~
+    $ci{'#'} = qq~
 .......
 ..X.X..
 ..X.X..
@@ -175,7 +180,7 @@ $ci{'#'} = qq~
 .......
 .......
 ~;
-$ci{'$'} = qq~
+    $ci{'$'} = qq~
 .......
 ...X...
 ..XXXX.
@@ -187,7 +192,7 @@ $ci{'$'} = qq~
 .......
 .......
 ~;
-$ci{'%'} = qq~
+    $ci{'%'} = qq~
 .......
 .XX....
 .XX..X.
@@ -199,7 +204,7 @@ $ci{'%'} = qq~
 .......
 .......
 ~;
-$ci{'&'} = qq~
+    $ci{'&'} = qq~
 .......
 ..X....
 .X.X...
@@ -211,7 +216,7 @@ $ci{'&'} = qq~
 .......
 .......
 ~;
-$ci{'\''} = qq~
+    $ci{'\''} = qq~
 .......
 ...X...
 ...X...
@@ -223,7 +228,7 @@ $ci{'\''} = qq~
 .......
 .......
 ~;
-$ci{'('} = qq~
+    $ci{'('} = qq~
 .......
 ....X..
 ...X...
@@ -235,7 +240,7 @@ $ci{'('} = qq~
 .......
 .......
 ~;
-$ci{')'} = qq~
+    $ci{')'} = qq~
 .......
 ..X....
 ...X...
@@ -247,7 +252,7 @@ $ci{')'} = qq~
 .......
 .......
 ~;
-$ci{'*'} = qq~
+    $ci{'*'} = qq~
 .......
 ...X...
 .X.X.X.
@@ -259,7 +264,7 @@ $ci{'*'} = qq~
 .......
 .......
 ~;
-$ci{'+'} = qq~
+    $ci{'+'} = qq~
 .......
 .......
 ...X...
@@ -271,7 +276,7 @@ $ci{'+'} = qq~
 .......
 .......
 ~;
-$ci{','} = qq~
+    $ci{','} = qq~
 .......
 .......
 .......
@@ -283,7 +288,7 @@ $ci{','} = qq~
 ..X....
 .......
 ~;
-$ci{'-'} = qq~
+    $ci{'-'} = qq~
 .......
 .......
 .......
@@ -295,7 +300,7 @@ $ci{'-'} = qq~
 .......
 .......
 ~;
-$ci{'.'} = qq~
+    $ci{'.'} = qq~
 .......
 .......
 .......
@@ -307,7 +312,7 @@ $ci{'.'} = qq~
 .......
 .......
 ~;
-$ci{'/'} = qq~
+    $ci{'/'} = qq~
 .......
 .......
 .....X.
@@ -319,7 +324,7 @@ $ci{'/'} = qq~
 .......
 .......
 ~;
-$ci{':'} = qq~
+    $ci{':'} = qq~
 .......
 .......
 .......
@@ -331,7 +336,7 @@ $ci{':'} = qq~
 .......
 .......
 ~;
-$ci{';'} = qq~
+    $ci{';'} = qq~
 .......
 .......
 .......
@@ -343,7 +348,7 @@ $ci{';'} = qq~
 ..X....
 .......
 ~;
-$ci{'<'} = qq~
+    $ci{'<'} = qq~
 .......
 ....X..
 ...X...
@@ -355,7 +360,7 @@ $ci{'<'} = qq~
 .......
 .......
 ~;
-$ci{'='} = qq~
+    $ci{'='} = qq~
 .......
 .......
 .......
@@ -367,7 +372,7 @@ $ci{'='} = qq~
 .......
 .......
 ~;
-$ci{'>'} = qq~
+    $ci{'>'} = qq~
 .......
 ..X....
 ...X...
@@ -379,7 +384,7 @@ $ci{'>'} = qq~
 .......
 .......
 ~;
-$ci{'?'} = qq~
+    $ci{'?'} = qq~
 .......
 ..XXX..
 .X...X.
@@ -391,7 +396,7 @@ $ci{'?'} = qq~
 .......
 .......
 ~;
-$ci{'@'} = qq~
+    $ci{'@'} = qq~
 .......
 ..XXX..
 .X...X.
@@ -403,7 +408,7 @@ $ci{'@'} = qq~
 .......
 .......
 ~;
-$ci{'['} = qq~
+    $ci{'['} = qq~
 .......
 .XXXXX.
 .XX....
@@ -415,7 +420,7 @@ $ci{'['} = qq~
 .......
 .......
 ~;
-$ci{'\\'} = qq~
+    $ci{'\\'} = qq~
 .......
 .......
 .X.....
@@ -427,7 +432,7 @@ $ci{'\\'} = qq~
 .......
 .......
 ~;
-$ci{']'} = qq~
+    $ci{']'} = qq~
 .......
 .XXXXX.
 ....XX.
@@ -439,7 +444,7 @@ $ci{']'} = qq~
 .......
 .......
 ~;
-$ci{'^'} = qq~
+    $ci{'^'} = qq~
 .......
 .......
 .......
@@ -451,7 +456,7 @@ $ci{'^'} = qq~
 .......
 .......
 ~;
-$ci{'_'} = qq~
+    $ci{'_'} = qq~
 .......
 .......
 .......
@@ -463,7 +468,7 @@ $ci{'_'} = qq~
 .......
 .......
 ~;
-$ci{'`'} = qq~
+    $ci{'`'} = qq~
 .......
 ...X...
 ...X...
@@ -475,7 +480,7 @@ $ci{'`'} = qq~
 .......
 .......
 ~;
-$ci{'{'} = qq~
+    $ci{'{'} = qq~
 .......
 ....XX.
 ...X...
@@ -487,7 +492,7 @@ $ci{'{'} = qq~
 .......
 .......
 ~;
-$ci{'|'} = qq~
+    $ci{'|'} = qq~
 .......
 ...X...
 ...X...
@@ -499,7 +504,7 @@ $ci{'|'} = qq~
 .......
 .......
 ~;
-$ci{'}'} = qq~
+    $ci{'}'} = qq~
 .......
 ..XX...
 ....X..
@@ -511,7 +516,7 @@ $ci{'}'} = qq~
 .......
 .......
 ~;
-$ci{'~'} = qq~
+    $ci{'~'} = qq~
 .......
 ..X....
 .X.X.X.
@@ -523,7 +528,7 @@ $ci{'~'} = qq~
 .......
 .......
 ~;
-$ci{'0'} = qq~
+    $ci{'0'} = qq~
 .......
 ..XXX..
 .X...X.
@@ -535,7 +540,7 @@ $ci{'0'} = qq~
 .......
 .......
 ~;
-$ci{'1'} = qq~
+    $ci{'1'} = qq~
 .......
 ...X...
 ..XX...
@@ -547,7 +552,7 @@ $ci{'1'} = qq~
 .......
 .......
 ~;
-$ci{'2'} = qq~
+    $ci{'2'} = qq~
 .......
 ..XXX..
 .X...X.
@@ -559,7 +564,7 @@ $ci{'2'} = qq~
 .......
 .......
 ~;
-$ci{'3'} = qq~
+    $ci{'3'} = qq~
 .......
 .XXXXX.
 .....X.
@@ -571,7 +576,7 @@ $ci{'3'} = qq~
 .......
 .......
 ~;
-$ci{'4'} = qq~
+    $ci{'4'} = qq~
 .......
 ....X..
 ...XX..
@@ -583,7 +588,7 @@ $ci{'4'} = qq~
 .......
 .......
 ~;
-$ci{'5'} = qq~
+    $ci{'5'} = qq~
 .......
 .XXXXX.
 .X.....
@@ -595,7 +600,7 @@ $ci{'5'} = qq~
 .......
 .......
 ~;
-$ci{'6'} = qq~
+    $ci{'6'} = qq~
 .......
 ...XXX.
 ..X....
@@ -607,7 +612,7 @@ $ci{'6'} = qq~
 .......
 .......
 ~;
-$ci{'7'} = qq~
+    $ci{'7'} = qq~
 .......
 .XXXXX.
 .....X.
@@ -619,7 +624,7 @@ $ci{'7'} = qq~
 .......
 .......
 ~;
-$ci{'8'} = qq~
+    $ci{'8'} = qq~
 .......
 ..XXX..
 .X...X.
@@ -631,7 +636,7 @@ $ci{'8'} = qq~
 .......
 .......
 ~;
-$ci{'9'} = qq~
+    $ci{'9'} = qq~
 .......
 ..XXX..
 .X...X.
@@ -643,7 +648,7 @@ $ci{'9'} = qq~
 .......
 .......
 ~;
-$ci{'A'} = qq~
+    $ci{'A'} = qq~
 .......
 ...X...
 ..X.X..
@@ -655,7 +660,7 @@ $ci{'A'} = qq~
 .......
 .......
 ~;
-$ci{'a'} = qq~
+    $ci{'a'} = qq~
 .......
 .......
 .......
@@ -667,7 +672,7 @@ $ci{'a'} = qq~
 .......
 .......
 ~;
-$ci{'B'} = qq~
+    $ci{'B'} = qq~
 .......
 .XXXX..
 .X...X.
@@ -679,7 +684,7 @@ $ci{'B'} = qq~
 .......
 .......
 ~;
-$ci{'b'} = qq~
+    $ci{'b'} = qq~
 .......
 .X.....
 .X.....
@@ -691,7 +696,7 @@ $ci{'b'} = qq~
 .......
 .......
 ~;
-$ci{'C'} = qq~
+    $ci{'C'} = qq~
 .......
 ..XXX..
 .X...X.
@@ -703,7 +708,7 @@ $ci{'C'} = qq~
 .......
 .......
 ~;
-$ci{'c'} = qq~
+    $ci{'c'} = qq~
 .......
 .......
 .......
@@ -715,7 +720,7 @@ $ci{'c'} = qq~
 .......
 .......
 ~;
-$ci{'D'} = qq~
+    $ci{'D'} = qq~
 .......
 .XXXX..
 .X...X.
@@ -727,7 +732,7 @@ $ci{'D'} = qq~
 .......
 .......
 ~;
-$ci{'d'} = qq~
+    $ci{'d'} = qq~
 .......
 .....X.
 .....X.
@@ -739,7 +744,7 @@ $ci{'d'} = qq~
 .......
 .......
 ~;
-$ci{'E'} = qq~
+    $ci{'E'} = qq~
 .......
 .XXXXX.
 .X.....
@@ -751,7 +756,7 @@ $ci{'E'} = qq~
 .......
 .......
 ~;
-$ci{'e'} = qq~
+    $ci{'e'} = qq~
 .......
 .......
 .......
@@ -763,7 +768,7 @@ $ci{'e'} = qq~
 .......
 .......
 ~;
-$ci{'F'} = qq~
+    $ci{'F'} = qq~
 .......
 .XXXXX.
 .X.....
@@ -775,7 +780,7 @@ $ci{'F'} = qq~
 .......
 .......
 ~;
-$ci{'f'} = qq~
+    $ci{'f'} = qq~
 .......
 ...XX..
 ..X..X.
@@ -787,7 +792,7 @@ $ci{'f'} = qq~
 .......
 .......
 ~;
-$ci{'G'} = qq~
+    $ci{'G'} = qq~
 .......
 ..XXXX.
 .X.....
@@ -799,7 +804,7 @@ $ci{'G'} = qq~
 .......
 .......
 ~;
-$ci{'g'} = qq~
+    $ci{'g'} = qq~
 .......
 .......
 .......
@@ -811,7 +816,7 @@ $ci{'g'} = qq~
 ..XXX..
 .......
 ~;
-$ci{'H'} = qq~
+    $ci{'H'} = qq~
 .......
 .X...X.
 .X...X.
@@ -823,7 +828,7 @@ $ci{'H'} = qq~
 .......
 .......
 ~;
-$ci{'h'} = qq~
+    $ci{'h'} = qq~
 .......
 .X.....
 .X.....
@@ -835,7 +840,7 @@ $ci{'h'} = qq~
 .......
 .......
 ~;
-$ci{'I'} = qq~
+    $ci{'I'} = qq~
 .......
 ..XXX..
 ...X...
@@ -847,7 +852,7 @@ $ci{'I'} = qq~
 .......
 .......
 ~;
-$ci{'i'} = qq~
+    $ci{'i'} = qq~
 .......
 ...X...
 .......
@@ -859,7 +864,7 @@ $ci{'i'} = qq~
 .......
 .......
 ~;
-$ci{'J'} = qq~
+    $ci{'J'} = qq~
 .......
 .....X.
 .....X.
@@ -871,7 +876,7 @@ $ci{'J'} = qq~
 .......
 .......
 ~;
-$ci{'j'} = qq~
+    $ci{'j'} = qq~
 .......
 ....X..
 .......
@@ -883,7 +888,7 @@ $ci{'j'} = qq~
 ..XX...
 .......
 ~;
-$ci{'K'} = qq~
+    $ci{'K'} = qq~
 .......
 .X...X.
 .X..X..
@@ -895,7 +900,7 @@ $ci{'K'} = qq~
 .......
 .......
 ~;
-$ci{'k'} = qq~
+    $ci{'k'} = qq~
 .......
 .X.....
 .X.....
@@ -907,7 +912,7 @@ $ci{'k'} = qq~
 .......
 .......
 ~;
-$ci{'L'} = qq~
+    $ci{'L'} = qq~
 .......
 .X.....
 .X.....
@@ -919,7 +924,7 @@ $ci{'L'} = qq~
 .......
 .......
 ~;
-$ci{'l'} = qq~
+    $ci{'l'} = qq~
 .......
 ..XX...
 ...X...
@@ -931,7 +936,7 @@ $ci{'l'} = qq~
 .......
 .......
 ~;
-$ci{'M'} = qq~
+    $ci{'M'} = qq~
 .......
 .X...X.
 .XX.XX.
@@ -943,7 +948,7 @@ $ci{'M'} = qq~
 .......
 .......
 ~;
-$ci{'m'} = qq~
+    $ci{'m'} = qq~
 .......
 .......
 .......
@@ -955,7 +960,7 @@ $ci{'m'} = qq~
 .......
 .......
 ~;
-$ci{'N'} = qq~
+    $ci{'N'} = qq~
 .......
 .X...X.
 .X...X.
@@ -967,7 +972,7 @@ $ci{'N'} = qq~
 .......
 .......
 ~;
-$ci{'n'} = qq~
+    $ci{'n'} = qq~
 .......
 .......
 .......
@@ -979,7 +984,7 @@ $ci{'n'} = qq~
 .......
 .......
 ~;
-$ci{'O'} = qq~
+    $ci{'O'} = qq~
 .......
 ..XXX..
 .X...X.
@@ -991,7 +996,7 @@ $ci{'O'} = qq~
 .......
 .......
 ~;
-$ci{'o'} = qq~
+    $ci{'o'} = qq~
 .......
 .......
 .......
@@ -1003,7 +1008,7 @@ $ci{'o'} = qq~
 .......
 .......
 ~;
-$ci{'P'} = qq~
+    $ci{'P'} = qq~
 .......
 .XXXX..
 .X...X.
@@ -1015,7 +1020,7 @@ $ci{'P'} = qq~
 .......
 .......
 ~;
-$ci{'p'} = qq~
+    $ci{'p'} = qq~
 .......
 .......
 .......
@@ -1027,7 +1032,7 @@ $ci{'p'} = qq~
 .X.....
 .......
 ~;
-$ci{'Q'} = qq~
+    $ci{'Q'} = qq~
 .......
 ..XXX..
 .X...X.
@@ -1039,7 +1044,7 @@ $ci{'Q'} = qq~
 .......
 .......
 ~;
-$ci{'q'} = qq~
+    $ci{'q'} = qq~
 .......
 .......
 .......
@@ -1051,7 +1056,7 @@ $ci{'q'} = qq~
 .....X.
 .......
 ~;
-$ci{'R'} = qq~
+    $ci{'R'} = qq~
 .......
 .XXXX..
 .X...X.
@@ -1063,7 +1068,7 @@ $ci{'R'} = qq~
 .......
 .......
 ~;
-$ci{'r'} = qq~
+    $ci{'r'} = qq~
 .......
 .......
 .......
@@ -1075,7 +1080,7 @@ $ci{'r'} = qq~
 .......
 .......
 ~;
-$ci{'S'} = qq~
+    $ci{'S'} = qq~
 .......
 ..XXX..
 .X...X.
@@ -1087,7 +1092,7 @@ $ci{'S'} = qq~
 .......
 .......
 ~;
-$ci{'s'} = qq~
+    $ci{'s'} = qq~
 .......
 .......
 .......
@@ -1099,7 +1104,7 @@ $ci{'s'} = qq~
 .......
 .......
 ~;
-$ci{'T'} = qq~
+    $ci{'T'} = qq~
 .......
 .XXXXX.
 ...X...
@@ -1111,7 +1116,7 @@ $ci{'T'} = qq~
 .......
 .......
 ~;
-$ci{'t'} = qq~
+    $ci{'t'} = qq~
 .......
 ..X....
 .XXXX..
@@ -1123,7 +1128,7 @@ $ci{'t'} = qq~
 .......
 .......
 ~;
-$ci{'U'} = qq~
+    $ci{'U'} = qq~
 .......
 .X...X.
 .X...X.
@@ -1135,7 +1140,7 @@ $ci{'U'} = qq~
 .......
 .......
 ~;
-$ci{'u'} = qq~
+    $ci{'u'} = qq~
 .......
 .......
 .......
@@ -1147,7 +1152,7 @@ $ci{'u'} = qq~
 .......
 .......
 ~;
-$ci{'V'} = qq~
+    $ci{'V'} = qq~
 .......
 .X...X.
 .X...X.
@@ -1159,7 +1164,7 @@ $ci{'V'} = qq~
 .......
 .......
 ~;
-$ci{'v'} = qq~
+    $ci{'v'} = qq~
 .......
 .......
 .......
@@ -1171,7 +1176,7 @@ $ci{'v'} = qq~
 .......
 .......
 ~;
-$ci{'W'} = qq~
+    $ci{'W'} = qq~
 .......
 .X...X.
 .X...X.
@@ -1183,7 +1188,7 @@ $ci{'W'} = qq~
 .......
 .......
 ~;
-$ci{'w'} = qq~
+    $ci{'w'} = qq~
 .......
 .......
 .......
@@ -1195,7 +1200,7 @@ $ci{'w'} = qq~
 .......
 .......
 ~;
-$ci{'X'} = qq~
+    $ci{'X'} = qq~
 .......
 .X...X.
 .X...X.
@@ -1207,7 +1212,7 @@ $ci{'X'} = qq~
 .......
 .......
 ~;
-$ci{'x'} = qq~
+    $ci{'x'} = qq~
 .......
 .......
 .......
@@ -1219,7 +1224,7 @@ $ci{'x'} = qq~
 .......
 .......
 ~;
-$ci{'Y'} = qq~
+    $ci{'Y'} = qq~
 .......
 .X...X.
 .X...X.
@@ -1231,7 +1236,7 @@ $ci{'Y'} = qq~
 .......
 .......
 ~;
-$ci{'y'} = qq~
+    $ci{'y'} = qq~
 .......
 .......
 .......
@@ -1243,7 +1248,7 @@ $ci{'y'} = qq~
 ..XXX..
 .......
 ~;
-$ci{'Z'} = qq~
+    $ci{'Z'} = qq~
 .......
 .XXXXX.
 .....X.
@@ -1255,7 +1260,7 @@ $ci{'Z'} = qq~
 .......
 .......
 ~;
-$ci{'z'} = qq~
+    $ci{'z'} = qq~
 .......
 .......
 .......
@@ -1268,191 +1273,216 @@ $ci{'z'} = qq~
 .......
 ~;
 
-      ###############################################
+    ###############################################
 
-      my ($nl, @lines, $len, $w, $h, $LINE_HEIGHT, $BLOCK_LIMIT);
+    my ( $nl, @lines, $len, $w, $h, $LINE_HEIGHT, $BLOCK_LIMIT );
 
-      # to measure length of the 'newline' character (cross platform LF vs CR+LF ???)
-      $nl = length qq~
+ # to measure length of the 'newline' character (cross platform LF vs CR+LF ???)
+    $nl = length qq~
 ~;
 
-      $LINE_HEIGHT = $CHAR_HEIGHT * $DOT_HEIGHT;
-      @lines = split("\n", $msg);
-      $len = 0;
-      foreach (@lines) { $len = length $_ if (length $_ > $len); }
-      $w = $len * $CHAR_WIDTH * $DOT_WIDTH;
-      $h = @lines * $LINE_HEIGHT;
-      # LZW block limit - cannot allow the LZW code size to change from the initial
-      # code size (we can't know when the code size will change because we aren't
-      # implementing compression). The 3 is a fudge factor.
-      $BLOCK_LIMIT = 2**$BITS_PER_PIXEL - 3;
+    $LINE_HEIGHT = $CHAR_HEIGHT * $DOT_HEIGHT;
+    @lines       = split( "\n", $msg );
+    $len         = 0;
+    foreach (@lines) { $len = length $_ if ( length $_ > $len ); }
+    $w = $len * $CHAR_WIDTH * $DOT_WIDTH;
+    $h = @lines * $LINE_HEIGHT;
 
-      # Implementation notes:
-      # * Image is NOT compressed! - Does not use LZW compression!
-      # * For ease of output things are arranged so that the expected LZW code size is
-      #   always 8 bits. The initial LZW code size is determined by the number of bits
-      #   required to represent all possible colour indices, plus two additional codes
-      #   used to (1) reset the LZW decode table and (2) mark the end of LZW data. By
-      #   selecting a 128 entry colour table, the total of 130 initial LZW codes
-      #   require 8 bits. During output, the decoding table is reset at regular
-      #   intervals to prevent it from adding so many entries that the decoder would
-      #   increase the expected code size to 9 bits.
+   # LZW block limit - cannot allow the LZW code size to change from the initial
+   # code size (we can't know when the code size will change because we aren't
+   # implementing compression). The 3 is a fudge factor.
+    $BLOCK_LIMIT = 2**$BITS_PER_PIXEL - 3;
 
-      # GIF Signature
-      print 'Content-type: image/gif', "\x0A\x0A";
+# Implementation notes:
+# * Image is NOT compressed! - Does not use LZW compression!
+# * For ease of output things are arranged so that the expected LZW code size is
+#   always 8 bits. The initial LZW code size is determined by the number of bits
+#   required to represent all possible colour indices, plus two additional codes
+#   used to (1) reset the LZW decode table and (2) mark the end of LZW data. By
+#   selecting a 128 entry colour table, the total of 130 initial LZW codes
+#   require 8 bits. During output, the decoding table is reset at regular
+#   intervals to prevent it from adding so many entries that the decoder would
+#   increase the expected code size to 9 bits.
 
-      # Screen Descriptor
-      print $TRANSPARENT_INDEX ? 'GIF89a' : 'GIF87a';
+    # GIF Signature
+    print 'Content-type: image/gif', "\x0A\x0A";
 
-      # width, height
-      print pack 'v2', $w, $h;
+    # Screen Descriptor
+    print $TRANSPARENT_INDEX ? 'GIF89a' : 'GIF87a';
 
-      # global colour map, 8 bits colour resolution, 7 bits per pixel
-      print pack 'C1', 0xF0 + $BITS_PER_PIXEL - 1;
+    # width, height
+    print pack 'v2', $w, $h;
 
-      # background colour = 0
-      print "\0";
+    # global colour map, 8 bits colour resolution, 7 bits per pixel
+    print pack 'C1', 0xF0 + $BITS_PER_PIXEL - 1;
 
-      # reserved
-      print "\0";
+    # background colour = 0
+    print "\0";
 
-      # Global Colour Map
-      print $palette;
-      print "\0" x ((2**$BITS_PER_PIXEL * 3) - length $palette);
+    # reserved
+    print "\0";
 
-      if ($TRANSPARENT_INDEX) {
-            # Graphic Control Extension
-            # extension introducer
-            print "\x21";
-            # graphic control label
-            print "\xF9";
-            # block size
-            print "\x04";
-            # no disposal method, no user input, transparent colour present
-            print "\x01";
-            # delay time
-            print "\0\0";
-            # transparent colour index
-            print $TRANSPARENT_INDEX;
-            # block terminator
-            print "\0";
-      }
+    # Global Colour Map
+    print $palette;
+    print "\0" x ( ( 2**$BITS_PER_PIXEL * 3 ) - length $palette );
 
-      # Image Descriptor
+    if ($TRANSPARENT_INDEX) {
 
-      # image separator
-      print ',';
+        # Graphic Control Extension
+        # extension introducer
+        print "\x21";
 
-      # left, top
-      print "\0\0\0\0";
+        # graphic control label
+        print "\xF9";
 
-      # width, height
-      print pack 'v2', $w, $h;
+        # block size
+        print "\x04";
 
-      # use global colour map (not local), sequential (not interlaced)
-      print "\0";
+        # no disposal method, no user input, transparent colour present
+        print "\x01";
 
-      # Raster Data
+        # delay time
+        print "\0\0";
 
-      # code size
-      print pack 'C', $BITS_PER_PIXEL;
+        # transparent colour index
+        print $TRANSPARENT_INDEX;
 
-      # the data is output in blocks with a leading byte count
-      my ($img, $line, $random_number);
-      my ($y, $cy, $dy);
-      my ($x, $cx, $i, $c, $d, $di, $r);
-      $range = 10;
-      for ($y = 0; $y < $h; $y++) {
-            $cy = int($y / $DOT_HEIGHT) % $CHAR_HEIGHT; # y coord in character dots
-            $dy = $y % $DOT_HEIGHT;
-            for ($x = 0; $x < $w; $x += $DOT_WIDTH) {
-                  $random_number = int(rand($range));
-                  $cx = int($x / $DOT_WIDTH) % $CHAR_WIDTH; # x coord in character dots
-                  $i = int($x / $DOT_WIDTH / $CHAR_WIDTH); # index into message string
-                  $line = $lines[$y / $LINE_HEIGHT];
-                  $c = ($i < length $line) ? substr $line, $i, 1 : ' ';
-                  $d = substr $ci{$c}, $cy * ($CHAR_WIDTH + $nl) + $cx + $nl, 1; # dot in character definition
-                  if ($distortion > 0) {
-                        $dis_level = 9 - $distortion;
-                        if ($random_number <= $dis_level) { $di = ($d eq 'X') ? $dot : $nodot;} elsif ($random_number > $dis_level){ $di = ($d eq 'X') ? $dot : $invnodot;}
-                  } else {
-                        $di = ($d eq 'X') ? $dot : $nodot;
-                  }
-                  $di = substr $di, $dy * ($DOT_WIDTH + $nl) + $nl, $DOT_WIDTH;
-                  for ($i = 0; $i < length $di; $i++) {
-                        $c = ord substr $di, $i, 1;
-                        if ($randomizer > 0) {
-                              # Start of randomizer - comment this block out if you don't like it!
-                              if($randomizer == 1){$rc1 = 1; $rc2 = 1;}
-                              if($randomizer == 2){$rc1 = 2; $rc2 = 2;}
-                              if($randomizer == 3){$rc1 = 1; $rc2 = 2;}
-                              $r = rand;
-                              if ($r < .1) {
-                                    $c += $rc1;
-                              } elsif ($r > .9) {
-                                    $c += $rc2;
-                              }
-                              # End of randomizer
-                        }
-                        $c = chr $c;
-                        $img .= $c;
-                  }
+        # block terminator
+        print "\0";
+    }
+
+    # Image Descriptor
+
+    # image separator
+    print ',';
+
+    # left, top
+    print "\0\0\0\0";
+
+    # width, height
+    print pack 'v2', $w, $h;
+
+    # use global colour map (not local), sequential (not interlaced)
+    print "\0";
+
+    # Raster Data
+
+    # code size
+    print pack 'C', $BITS_PER_PIXEL;
+
+    # the data is output in blocks with a leading byte count
+    my ( $img, $line, $random_number );
+    my ( $y,   $cy,   $dy );
+    my ( $x,   $cx,   $i, $c, $d, $di, $r );
+    $range = 10;
+    for ( $y = 0 ; $y < $h ; $y++ ) {
+        $cy =
+          int( $y / $DOT_HEIGHT ) % $CHAR_HEIGHT;    # y coord in character dots
+        $dy = $y % $DOT_HEIGHT;
+        for ( $x = 0 ; $x < $w ; $x += $DOT_WIDTH ) {
+            $random_number = int( rand($range) );
+            $cx =
+              int( $x / $DOT_WIDTH ) % $CHAR_WIDTH;  # x coord in character dots
+            $i =
+              int( $x / $DOT_WIDTH / $CHAR_WIDTH );  # index into message string
+            $line = $lines[ $y / $LINE_HEIGHT ];
+            $c    = ( $i < length $line ) ? substr $line, $i, 1 : ' ';
+            $d    = substr $ci{$c}, $cy * ( $CHAR_WIDTH + $nl ) + $cx + $nl,
+              1;    # dot in character definition
+            if ( $distortion > 0 ) {
+                $dis_level = 9 - $distortion;
+                if ( $random_number <= $dis_level ) {
+                    $di = ( $d eq 'X' ) ? $dot : $nodot;
+                }
+                elsif ( $random_number > $dis_level ) {
+                    $di = ( $d eq 'X' ) ? $dot : $invnodot;
+                }
             }
-      }
-
-      # Re-arrange the image data so it's bit-packed
-      my ($cnt, $pkdimg, $buf, $bufbits);
-      $i = 0;
-      $buf = 0;
-      $bufbits = 0;
-      while ($i <= length $img) {
-            if ($i < length $img) {
-                  # Output each pixel
-                  $c = ord substr $img, $i, 1;
-                  $c &= 2**$BITS_PER_PIXEL-1;
-                  $buf |= $c << $bufbits;
-                  $bufbits += $BITS_PER_PIXEL + 1;
-                  $i++;
-                  # Insert LZW table clear code before the decoder will grow the bit size
-                  # The minus 2 is a fudge factor
-                  if ($i % (2**$BITS_PER_PIXEL-2) == 0) {
-                        $c = 2**$BITS_PER_PIXEL;
-                        $buf |= $c << $bufbits;
-                        $bufbits += $BITS_PER_PIXEL + 1;
-                  }
-            } else {
-                  #Output LZW end code
-                  $c = 2**$BITS_PER_PIXEL+1;
-                  $buf |= $c << $bufbits;
-                  $bufbits += $BITS_PER_PIXEL + 1;
-                  $i++;
+            else {
+                $di = ( $d eq 'X' ) ? $dot : $nodot;
             }
-            while ($bufbits >= 8) {
-                  $c = chr ($buf & 255);
-                  $pkdimg .= $c;
-                  $buf >>= 8;
-                  $bufbits -= 8;
+            $di = substr $di, $dy * ( $DOT_WIDTH + $nl ) + $nl, $DOT_WIDTH;
+            for ( $i = 0 ; $i < length $di ; $i++ ) {
+                $c = ord substr $di, $i, 1;
+                if ( $randomizer > 0 ) {
+
+            # Start of randomizer - comment this block out if you don't like it!
+                    if ( $randomizer == 1 ) { $rc1 = 1; $rc2 = 1; }
+                    if ( $randomizer == 2 ) { $rc1 = 2; $rc2 = 2; }
+                    if ( $randomizer == 3 ) { $rc1 = 1; $rc2 = 2; }
+                    $r = rand;
+                    if ( $r < .1 ) {
+                        $c += $rc1;
+                    }
+                    elsif ( $r > .9 ) {
+                        $c += $rc2;
+                    }
+
+                    # End of randomizer
+                }
+                $c = chr $c;
+                $img .= $c;
             }
-      }
-      $pkdimg .= chr $buf;
+        }
+    }
 
-      # Output image data
-      $i = 0;
-      while ($i < length $pkdimg) {
-            $cnt = (length $pkdimg) - $i;
-            $cnt = 255 if ($cnt > 255);
-            print pack 'C', $cnt;
-            print substr $pkdimg, $i, $cnt;
-            $i += $cnt;
-      }
+    # Re-arrange the image data so it's bit-packed
+    my ( $cnt, $pkdimg, $buf, $bufbits );
+    $i       = 0;
+    $buf     = 0;
+    $bufbits = 0;
+    while ( $i <= length $img ) {
+        if ( $i < length $img ) {
 
-      # Finish up
-      print "\0"; # zero byte count (end of raster data)
+            # Output each pixel
+            $c = ord substr $img, $i, 1;
+            $c &= 2**$BITS_PER_PIXEL - 1;
+            $buf |= $c << $bufbits;
+            $bufbits += $BITS_PER_PIXEL + 1;
+            $i++;
 
-      # GIF Terminator
-      print ';';
+         # Insert LZW table clear code before the decoder will grow the bit size
+         # The minus 2 is a fudge factor
+            if ( $i % ( 2**$BITS_PER_PIXEL - 2 ) == 0 ) {
+                $c = 2**$BITS_PER_PIXEL;
+                $buf |= $c << $bufbits;
+                $bufbits += $BITS_PER_PIXEL + 1;
+            }
+        }
+        else {
 
-      exit;
+            #Output LZW end code
+            $c = 2**$BITS_PER_PIXEL + 1;
+            $buf |= $c << $bufbits;
+            $bufbits += $BITS_PER_PIXEL + 1;
+            $i++;
+        }
+        while ( $bufbits >= 8 ) {
+            $c = chr( $buf & 255 );
+            $pkdimg .= $c;
+            $buf >>= 8;
+            $bufbits -= 8;
+        }
+    }
+    $pkdimg .= chr $buf;
+
+    # Output image data
+    $i = 0;
+    while ( $i < length $pkdimg ) {
+        $cnt = ( length $pkdimg ) - $i;
+        $cnt = 255 if ( $cnt > 255 );
+        print pack 'C', $cnt;
+        print substr $pkdimg, $i, $cnt;
+        $i += $cnt;
+    }
+
+    # Finish up
+    print "\0";    # zero byte count (end of raster data)
+
+    # GIF Terminator
+    print ';';
+
+    exit;
 }
 
 1;

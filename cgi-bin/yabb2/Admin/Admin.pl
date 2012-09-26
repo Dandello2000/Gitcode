@@ -1,5 +1,6 @@
 ###############################################################################
 # Admin.pl                                                                    #
+# $Date: 9/20/2012 $                                                          #
 ###############################################################################
 # YaBB: Yet another Bulletin Board                                            #
 # Open-Source Community Software for Webmasters                               #
@@ -11,13 +12,19 @@
 # Software by:  The YaBB Development Team                                     #
 #               with assistance from the YaBB community.                      #
 ###############################################################################
+# use strict;
+# use warnings;
+no warnings qw(uninitialized once redefine);
+use CGI::Carp qw(fatalsToBrowser);
+use English '-no_match_vars';
+our $VERSION = 1.0;
 
-$adminplver  = 'YaBB 2.6 $Revision: 1.0 $';
+$adminplver = 'YaBB 2.6 $Revision: 1.0 $';
 
 sub Admin {
-      &is_admin_or_gmod;
+    &is_admin_or_gmod;
 
-      $yymain .= qq~
+    $yymain .= qq~
  <div class="bordercolor" style="padding: 0px; width: 99%; margin-left: 0px; margin-right: auto;">
    <table width="100%" cellspacing="1" cellpadding="4">
      <tr valign="middle">
@@ -139,16 +146,16 @@ $noBytesHarmed<br /><br />
      <tr valign="middle">
        <td align="left" class="windowbg2">~;
 
-      &GetLastLogins;
+    &GetLastLogins;
 
-      $yymain .= qq~
+    $yymain .= qq~
       </td>
      </tr>
    </table>
  </div>~;
 
-      if (-d "./Convert") {
-            $yymain .= qq~
+    if ( -d "./Convert" ) {
+        $yymain .= qq~
 <br />
 <div class="bordercolor" style="padding: 0px; width: 100%; margin-left: auto; margin-right: 0px;">
 <form name="backdelete" action="$adminurl?action=convdelete" method="post">
@@ -171,127 +178,140 @@ $noBytesHarmed<br /><br />
 </table>
 </form>
 </div>~;
-      }
+    }
 
-      $yymain .= qq~
+    $yymain .= qq~
 </div>~;
 
-      require "$admindir/ModuleChecker.pl";
+    require "$admindir/ModuleChecker.pl";
 
-      $yymain .= qq~
+    $yymain .= qq~
 <div style="float: left; padding: 0px; width: 99%; margin-left: 0px; margin-right: auto; height: 100px;">&nbsp;</div>
 ~;
 
-      $yytitle = "$admin_txt{'208'}";
-      &AdminTemplate;
+    $yytitle = "$admin_txt{'208'}";
+    &AdminTemplate;
 }
 
 sub DeleteConverterFiles {
-      my @convertdir = qw~Boards Members Messages Variables~;
+    my @convertdir = qw~Boards Members Messages Variables~;
 
-      foreach $cnvdir (@convertdir) {
-            $convdir = "./Convert/$cnvdir";
-            if (-d "$convdir") {
-                  opendir("CNVDIR", $convdir) || &admin_fatal_error("cannot_open_dir","$convdir");
-                  @convlist = readdir("CNVDIR");
-                  closedir("CNVDIR");
-                  foreach $file (@convlist) {
-                        unlink "$convdir/$file" || &admin_fatal_error("cannot_open_dir","$convdir/$file");
-                  }
-                  rmdir("$convdir");
-            }
-      }
-      $convdir = "./Convert";
-      if (-d "$convdir") {
-            opendir("CNVDIR", $convdir) || &admin_fatal_error("cannot_open_dir","$convdir");
+    foreach $cnvdir (@convertdir) {
+        $convdir = "./Convert/$cnvdir";
+        if ( -d "$convdir" ) {
+            opendir( "CNVDIR", $convdir )
+              || &admin_fatal_error( "cannot_open_dir", "$convdir" );
             @convlist = readdir("CNVDIR");
             closedir("CNVDIR");
             foreach $file (@convlist) {
-                  unlink "$convdir/$file";
+                unlink "$convdir/$file"
+                  || &admin_fatal_error( "cannot_open_dir", "$convdir/$file" );
             }
             rmdir("$convdir");
-      }
-      if (-e "./Setup.pl") { unlink("./Setup.pl"); }
+        }
+    }
+    $convdir = "./Convert";
+    if ( -d "$convdir" ) {
+        opendir( "CNVDIR", $convdir )
+          || &admin_fatal_error( "cannot_open_dir", "$convdir" );
+        @convlist = readdir("CNVDIR");
+        closedir("CNVDIR");
+        foreach $file (@convlist) {
+            unlink "$convdir/$file";
+        }
+        rmdir("$convdir");
+    }
+    if ( -e "./Setup.pl" ) { unlink("./Setup.pl"); }
 
-      $yymain .= qq~<b>$admintxt{'10'}</b>~;
-      $yytitle = "$admintxt{'10'}";
-      &AdminTemplate;
+    $yymain .= qq~<b>$admintxt{'10'}</b>~;
+    $yytitle = "$admintxt{'10'}";
+    &AdminTemplate;
 }
 
 sub GetLastLogins {
-      fopen(ADMINLOG, "$vardir/adminlog.txt");
-      @adminlog = <ADMINLOG>;
-      fclose(ADMINLOG);
+    fopen( ADMINLOG, "$vardir/adminlog.txt" );
+    @adminlog = <ADMINLOG>;
+    fclose(ADMINLOG);
 
-      foreach $line (@adminlog) {
-            chomp $line;
-            @element = split(/\|/, $line);
-            if (!${$uid.$element[0]}{'realname'}) { &LoadUser($element[0]); }    # If user is not in memory, s/he must be loaded.
-            $element[2] = &timeformat($element[2]);
-            $yymain .= qq~
+    foreach $line (@adminlog) {
+        chomp $line;
+        @element = split( /\|/, $line );
+        if ( !${ $uid . $element[0] }{'realname'} ) {
+            &LoadUser( $element[0] );
+        }    # If user is not in memory, s/he must be loaded.
+        $element[2] = &timeformat( $element[2] );
+        $yymain .= qq~
             <a href="$scripturl?action=viewprofile;username=$useraccount{$element[0]}">${$uid.$element[0]}{'realname'}</a> <span class="small">($element[1]) - $element[2]</span><br />
             ~;
-      }
+    }
 }
 
 sub FullStats {
-      &is_admin_or_gmod;
-      my ($numcats, $numboards, $threadcount, $messagecount, $maxdays, $totalt, $totalm, $avgt, $avgm);
-      my ($memcount, $latestmember) = &MembershipGet;
-      &LoadUser($latestmember);
-      $thelatestmember = qq~<a href="$scripturl?action=viewprofile;username=$useraccount{$latestmember}">${$uid.$latestmember}{'realname'}</a>~;
-      $memcount ||= 1;
+    &is_admin_or_gmod;
+    my (
+        $numcats,      $numboards, $threadcount,
+        $messagecount, $maxdays,   $totalt,
+        $totalm,       $avgt,      $avgm
+    );
+    my ( $memcount, $latestmember ) = &MembershipGet;
+    &LoadUser($latestmember);
+    $thelatestmember =
+qq~<a href="$scripturl?action=viewprofile;username=$useraccount{$latestmember}">${$uid.$latestmember}{'realname'}</a>~;
+    $memcount ||= 1;
 
-      $numcats = 0;
+    $numcats = 0;
 
-      unless ($mloaded == 1) { require "$boardsdir/forum.master"; }
-      foreach $catid (@categoryorder) {
-            $boardlist = $cat{$catid};
-            $numcats++;
-            (@bdlist) = split(/\,/, $boardlist);
-            ($catname, $catperms, $catallowcol) = split(/\|/, $catinfo{"$catid"});
+    unless ( $mloaded == 1 ) { require "$boardsdir/forum.master"; }
+    foreach $catid (@categoryorder) {
+        $boardlist = $cat{$catid};
+        $numcats++;
+        (@bdlist) = split( /\,/, $boardlist );
+        ( $catname, $catperms, $catallowcol ) =
+          split( /\|/, $catinfo{"$catid"} );
 
-            foreach $curboard (@bdlist) {
-                  chomp $curboard;
-                  $numboards++;
-                  push(@loadboards, $curboard);
-            }
-      }
+        foreach $curboard (@bdlist) {
+            chomp $curboard;
+            $numboards++;
+            push( @loadboards, $curboard );
+        }
+    }
 
-      &BoardTotals("load", @loadboards);
-      foreach $curboard (@loadboards) {
-            $totalm += ${$uid.$curboard}{'messagecount'};
-            $totalt += ${$uid.$curboard}{'threadcount'};
-      }
+    &BoardTotals( "load", @loadboards );
+    foreach $curboard (@loadboards) {
+        $totalm += ${ $uid . $curboard }{'messagecount'};
+        $totalt += ${ $uid . $curboard }{'threadcount'};
+    }
 
-      $avgm = int($totalm / $memcount);
-      &LoadAdmins;
+    $avgm = int( $totalm / $memcount );
+    &LoadAdmins;
 
-      if ($enableclicklog) {
-            my (@log);
-            fopen(LOG, "$vardir/clicklog.txt");
-            @log = <LOG>;
-            fclose(LOG);
-            $yyclicks    = @log;
-            $yyclicks = &NumberFormat($yyclicks);
-            $yyclicktext = $admin_txt{'692'};
-            $yyclicklink = qq~&nbsp;(<a href="$adminurl?action=showclicks">$admin_txt{'693'}</a>)~;
-      } else {
-            $yyclicktext = $admin_txt{'692a'};
-            $yyclicklink = "";
-      }
-      my (@elog);
-      fopen(ELOG, "$vardir/errorlog.txt");
-      @elog = <ELOG>;
-      fclose(ELOG);
-      $errorslog = @elog;
-      $memcount = &NumberFormat($memcount);
-      $totalt = &NumberFormat($totalt);
-      $totalm = &NumberFormat($totalm);
-      $avgm = &NumberFormat($avgm);
-      $errorslog = &NumberFormat($errorslog);
+    if ($enableclicklog) {
+        my (@log);
+        fopen( LOG, "$vardir/clicklog.txt" );
+        @log = <LOG>;
+        fclose(LOG);
+        $yyclicks    = @log;
+        $yyclicks    = &NumberFormat($yyclicks);
+        $yyclicktext = $admin_txt{'692'};
+        $yyclicklink =
+qq~&nbsp;(<a href="$adminurl?action=showclicks">$admin_txt{'693'}</a>)~;
+    }
+    else {
+        $yyclicktext = $admin_txt{'692a'};
+        $yyclicklink = "";
+    }
+    my (@elog);
+    fopen( ELOG, "$vardir/errorlog.txt" );
+    @elog = <ELOG>;
+    fclose(ELOG);
+    $errorslog = @elog;
+    $memcount  = &NumberFormat($memcount);
+    $totalt    = &NumberFormat($totalt);
+    $totalm    = &NumberFormat($totalm);
+    $avgm      = &NumberFormat($avgm);
+    $errorslog = &NumberFormat($errorslog);
 
-      $yymain .= qq~
+    $yymain .= qq~
  <div class="bordercolor" style="padding: 0px; width: 99%; margin-left: 0px; margin-right: auto;">
    <table width="100%" cellspacing="1" cellpadding="4">
      <tr valign="middle">
@@ -347,48 +367,65 @@ sub FullStats {
         <div style="float: left; width: 65%; text-align: left; padding-top: 2px; padding-bottom: 2px;">
         ~;
 
-      # Sorts the threads to find the most recent post
-      # No need to check for board access here because only admins have access to this page
-      unless ($mloaded == 1) { require "$boardsdir/forum.master"; }
-      foreach $catid (@categoryorder) {
-            $boardlist = $cat{$catid};
-            (@bdlist) = split(/\,/, $boardlist);
-            foreach $curboard (@bdlist) {
-                  push(@goodboards, $curboard);
-            }
-      }
+# Sorts the threads to find the most recent post
+# No need to check for board access here because only admins have access to this page
+    unless ( $mloaded == 1 ) { require "$boardsdir/forum.master"; }
+    foreach $catid (@categoryorder) {
+        $boardlist = $cat{$catid};
+        (@bdlist) = split( /\,/, $boardlist );
+        foreach $curboard (@bdlist) {
+            push( @goodboards, $curboard );
+        }
+    }
 
-      &BoardTotals("load", @goodboards);
-      # &getlog; not used here !!?
-      foreach $curboard (@goodboards) {
-            chomp $curboard;
-            $lastposttime = ${$uid.$curboard}{'lastposttime'};
-            $lastposttime{$curboard} = &timeformat(${$uid.$curboard}{'lastposttime'});
-            ${$uid.$curboard}{'lastposttime'} = ${$uid.$curboard}{'lastposttime'} eq 'N/A' || !${$uid.$curboard}{'lastposttime'} ? $boardindex_txt{'470'} : ${$uid.$curboard}{'lastposttime'};
-            $lastpostrealtime{$curboard} = ${$uid.$curboard}{'lastposttime'} eq 'N/A' || !${$uid.$curboard}{'lastposttime'} ? '' : ${$uid.$curboard}{'lastposttime'};
-            if (${$uid.$curboard}{'lastposter'} =~ m~\AGuest-(.*)~) {
-                  ${$uid.$curboard}{'lastposter'} = $1;
-                  $lastposterguest{$curboard} = 1;
-            }
-            ${$uid.$curboard}{'lastposter'} = ${$uid.$curboard}{'lastposter'} eq 'N/A' || !${$uid.$curboard}{'lastposter'} ? $boardindex_txt{'470'} : ${$uid.$curboard}{'lastposter'};
-            ${$uid.$curboard}{'messagecount'} = ${$uid.$curboard}{'messagecount'} || 0;
-            ${$uid.$curboard}{'threadcount'} = ${$uid.$curboard}{'threadcount'} || 0;
-            $totalm += ${$uid.$curboard}{'messagecount'};
-            $totalt += ${$uid.$curboard}{'threadcount'};
+    &BoardTotals( "load", @goodboards );
 
-            # determine the true last post on all the boards a user has access to
-            if ($lastposttime > $lastthreadtime) {
-                  $lsdatetime = &timeformat($lastposttime);
-                  $lsposter = ${$uid.$curboard}{'lastposter'};
-                  $lssub = ${$uid.$curboard}{'lastsubject'};
-                  $lspostid = ${$uid.$curboard}{'lastpostid'};
-                  $lsreply = ${$uid.$curboard}{'lastreply'};
-                  $lastthreadtime = $lastposttime;
-            }
-      }
-      ($lssub, undef) = &Split_Splice_Move($lssub,0);
-      &ToChars($lssub);
-      $yymain .= qq~<a href="$scripturl?num=$lspostid/$lsreply#$lsreply">$lssub</a> ($lsdatetime)</div>
+    # &getlog; not used here !!?
+    foreach $curboard (@goodboards) {
+        chomp $curboard;
+        $lastposttime = ${ $uid . $curboard }{'lastposttime'};
+        $lastposttime{$curboard} =
+          &timeformat( ${ $uid . $curboard }{'lastposttime'} );
+        ${ $uid . $curboard }{'lastposttime'} =
+          ${ $uid . $curboard }{'lastposttime'} eq 'N/A'
+          || !${ $uid . $curboard }{'lastposttime'}
+          ? $boardindex_txt{'470'}
+          : ${ $uid . $curboard }{'lastposttime'};
+        $lastpostrealtime{$curboard} =
+          ${ $uid . $curboard }{'lastposttime'} eq 'N/A'
+          || !${ $uid . $curboard }{'lastposttime'}
+          ? ''
+          : ${ $uid . $curboard }{'lastposttime'};
+        if ( ${ $uid . $curboard }{'lastposter'} =~ m~\AGuest-(.*)~ ) {
+            ${ $uid . $curboard }{'lastposter'} = $1;
+            $lastposterguest{$curboard} = 1;
+        }
+        ${ $uid . $curboard }{'lastposter'} =
+          ${ $uid . $curboard }{'lastposter'} eq 'N/A'
+          || !${ $uid . $curboard }{'lastposter'}
+          ? $boardindex_txt{'470'}
+          : ${ $uid . $curboard }{'lastposter'};
+        ${ $uid . $curboard }{'messagecount'} =
+          ${ $uid . $curboard }{'messagecount'} || 0;
+        ${ $uid . $curboard }{'threadcount'} =
+          ${ $uid . $curboard }{'threadcount'} || 0;
+        $totalm += ${ $uid . $curboard }{'messagecount'};
+        $totalt += ${ $uid . $curboard }{'threadcount'};
+
+        # determine the true last post on all the boards a user has access to
+        if ( $lastposttime > $lastthreadtime ) {
+            $lsdatetime     = &timeformat($lastposttime);
+            $lsposter       = ${ $uid . $curboard }{'lastposter'};
+            $lssub          = ${ $uid . $curboard }{'lastsubject'};
+            $lspostid       = ${ $uid . $curboard }{'lastpostid'};
+            $lsreply        = ${ $uid . $curboard }{'lastreply'};
+            $lastthreadtime = $lastposttime;
+        }
+    }
+    ( $lssub, undef ) = &Split_Splice_Move( $lssub, 0 );
+    &ToChars($lssub);
+    $yymain .=
+qq~<a href="$scripturl?num=$lspostid/$lsreply#$lsreply">$lssub</a> ($lsdatetime)</div>
         <br />
         <div style="float: left; clear: left; width: 35%; text-align: left; padding-top: 2px; padding-bottom: 2px;">$admin_txt{'684'}</div>
         <div style="float: left; width: 65%; text-align: left; padding-top: 2px; padding-bottom: 2px;">$administrators</div>
@@ -412,139 +449,175 @@ sub FullStats {
    </table>
  </div>~;
 
-      $yytitle = $admintxt{'28'};
-      $action_area = "stats";
-      &AdminTemplate;
+    $yytitle     = $admintxt{'28'};
+    $action_area = "stats";
+    &AdminTemplate;
 }
 
 sub LoadAdmins {
-      &is_admin_or_gmod;
-      my (@members, $curentry, $memdata);
-      $administrators = "";
-      $gmods          = "";
-      &ManageMemberinfo("load");
-      while (($membername, $value) = each(%memberinf)) {
-            ($memberrealname, undef, $memposition, $memposts) = split(/\|/, $value);
-            if($do_scramble_id){$membernameCloaked = &cloak($membername); } else { $membernameCloaked = $membername; }
-            if ($memposition eq "Administrator") {
-                  $administrators .= qq~ <a href="$scripturl?action=viewprofile;username=$membernameCloaked">$memberrealname</a><span class="small">,</span> \n~;
-            }
-            if ($memposition eq "Global Moderator") {
-                  $gmods .= qq~ <a href="$scripturl?action=viewprofile;username=$membernameCloaked">$memberrealname</a><span class="small">,</span> \n~;
-            }
-      }
-      $administrators =~ s~<span class="small">,</span> \n\Z~~;
-      $gmods          =~ s~<span class="small">,</span> \n\Z~~;
-      if ($gmods eq "") { $gmods = qq~&nbsp;~; }
-      undef %memberinf;
+    &is_admin_or_gmod;
+    my ( @members, $curentry, $memdata );
+    $administrators = "";
+    $gmods          = "";
+    &ManageMemberinfo("load");
+    while ( ( $membername, $value ) = each(%memberinf) ) {
+        ( $memberrealname, undef, $memposition, $memposts ) =
+          split( /\|/, $value );
+        if   ($do_scramble_id) { $membernameCloaked = &cloak($membername); }
+        else                   { $membernameCloaked = $membername; }
+        if ( $memposition eq "Administrator" ) {
+            $administrators .=
+qq~ <a href="$scripturl?action=viewprofile;username=$membernameCloaked">$memberrealname</a><span class="small">,</span> \n~;
+        }
+        if ( $memposition eq "Global Moderator" ) {
+            $gmods .=
+qq~ <a href="$scripturl?action=viewprofile;username=$membernameCloaked">$memberrealname</a><span class="small">,</span> \n~;
+        }
+    }
+    $administrators =~ s~<span class="small">,</span> \n\Z~~;
+    $gmods          =~ s~<span class="small">,</span> \n\Z~~;
+    if ( $gmods eq "" ) { $gmods = qq~&nbsp;~; }
+    undef %memberinf;
 }
 
 sub ShowClickLog {
-      &is_admin_or_gmod;
+    &is_admin_or_gmod;
 
-      if ($enableclicklog) { $logtimetext = $admin_txt{'698'}; }
-      else { $logtimetext = $admin_txt{'698a'}; }
+    if   ($enableclicklog) { $logtimetext = $admin_txt{'698'}; }
+    else                   { $logtimetext = $admin_txt{'698a'}; }
 
-      my ($totalip, $totalclick, $totalbrow, $totalos, @log, @iplist, $date, @to, @from, @info, @os, @browser, @newiplist, @newbrowser, @newoslist, @newtolist, @newfromlist, $i, $curentry);
-      fopen(LOG, "$vardir/clicklog.txt");
-      @log = <LOG>;
-      fclose(LOG);
+    my (
+        $totalip,   $totalclick,  $totalbrow, $totalos,    @log,
+        @iplist,    $date,        @to,        @from,       @info,
+        @os,        @browser,     @newiplist, @newbrowser, @newoslist,
+        @newtolist, @newfromlist, $i,         $curentry
+    );
+    fopen( LOG, "$vardir/clicklog.txt" );
+    @log = <LOG>;
+    fclose(LOG);
 
-      $i = 0;
-      foreach $curentry (@log) {
-            ($iplist[$i], $date, $to[$i], $from[$i], $info[$i]) = split(/\|/, $curentry);
-            $i++;
-      }
-      $i = 0;
-      foreach $curentry (@info) {
-            if ($curentry !~ /\s\(Win/i || $curentry !~ /\s\(mac/) { $curentry =~ s/\s\((compatible;\s)*/ - /ig; }
-            else { $curentry =~ s/(\S)*\(/; /g; }
-            if ($curentry =~ /\s-\sWin/i) { $curentry =~ s/\s-\sWin/; win/ig; }
-            if ($curentry =~ /\s-\sMac/i) { $curentry =~ s/\s-\sMac/; mac/ig; }
-            ($browser[$i], $os[$i]) = split(/\;\s/, $curentry);
-            if ($os[$i] =~ /\)\s\S/) { ($os[$i], $browser[$i]) = split(/\)\s/, $os[$i]); }
-            $os[$i] =~ s/\)//g;
-            $i++;
-      }
+    $i = 0;
+    foreach $curentry (@log) {
+        ( $iplist[$i], $date, $to[$i], $from[$i], $info[$i] ) =
+          split( /\|/, $curentry );
+        $i++;
+    }
+    $i = 0;
+    foreach $curentry (@info) {
+        if ( $curentry !~ /\s\(Win/i || $curentry !~ /\s\(mac/ ) {
+            $curentry =~ s/\s\((compatible;\s)*/ - /ig;
+        }
+        else { $curentry =~ s/(\S)*\(/; /g; }
+        if ( $curentry =~ /\s-\sWin/i ) { $curentry =~ s/\s-\sWin/; win/ig; }
+        if ( $curentry =~ /\s-\sMac/i ) { $curentry =~ s/\s-\sMac/; mac/ig; }
+        ( $browser[$i], $os[$i] ) = split( /\;\s/, $curentry );
+        if ( $os[$i] =~ /\)\s\S/ ) {
+            ( $os[$i], $browser[$i] ) = split( /\)\s/, $os[$i] );
+        }
+        $os[$i] =~ s/\)//g;
+        $i++;
+    }
 
-      for ($i = 0; $i < @iplist; $i++) { $iplist{ $iplist[$i] }++; }
-      $i = 0;
-      while (($key, $val) = each(%iplist)) {
-            $newiplist[$i] = [$key, $val];
-            $i++;
-      }
-      $totalclick = @iplist;
-      $totalip    = @newiplist;
-      for ($i = 0; $i < @newiplist; $i++) {
+    for ( $i = 0 ; $i < @iplist ; $i++ ) { $iplist{ $iplist[$i] }++; }
+    $i = 0;
+    while ( ( $key, $val ) = each(%iplist) ) {
+        $newiplist[$i] = [ $key, $val ];
+        $i++;
+    }
+    $totalclick = @iplist;
+    $totalip    = @newiplist;
+    for ( $i = 0 ; $i < @newiplist ; $i++ ) {
 
-            if ($newiplist[$i]->[0] =~ /\S+/ && $newiplist[$i]->[0] =~ /\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/) {
-                  $guestiplist .= qq~$newiplist[$i]->[0]&nbsp;<span style="color: #FF0000;">(<i>$newiplist[$i]->[1]</i>)</span><br />~;
-            } else {
-                  &LoadUser($newiplist[$i]->[0]);
-                  if($do_scramble_id){$cloakedUserName = &cloak($newiplist[$i]->[0]); } else {$cloakedUserName = $newiplist[$i]->[0]; }
-                  my $displayUserName = $newiplist[$i]->[0];
-                  if(${$uid.$displayUserName}{'realname'} && (${$uid.$displayUserName}{'realname'} ne $newiplist[$i]->[0]))   {
-                        $displayUserName = ${$uid.$displayUserName}{'realname'};}
-                  $useriplist .= qq~<a href="$scripturl?action=viewprofile;username=$cloakedUserName">$displayUserName</a>&nbsp;<span style="color: #FF0000;">(<i>$newiplist[$i]->[1]</i>)</span><br />~;
+        if (   $newiplist[$i]->[0] =~ /\S+/
+            && $newiplist[$i]->[0] =~ /\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/ )
+        {
+            $guestiplist .=
+qq~$newiplist[$i]->[0]&nbsp;<span style="color: #FF0000;">(<i>$newiplist[$i]->[1]</i>)</span><br />~;
+        }
+        else {
+            &LoadUser( $newiplist[$i]->[0] );
+            if ($do_scramble_id) {
+                $cloakedUserName = &cloak( $newiplist[$i]->[0] );
             }
-      }
-
-      for ($i = 0; $i < @browser; $i++) { $browser{ $browser[$i] }++; }
-      $i = 0;
-      while (($key, $val) = each(%browser)) {
-            $newbrowser[$i] = [$key, $val];
-            $i++;
-      }
-      $totalbrow = @newbrowser;
-      for ($i = 0; $i < @newbrowser; $i++) {
-            if ($newbrowser[$i]->[0] =~ /\S+/) {
-                  $browserlist .= qq~$newbrowser[$i]->[0] &nbsp;<span style="color: #FF0000;">(<i>$newbrowser[$i]->[1]</i>)</span><br />~;
+            else { $cloakedUserName = $newiplist[$i]->[0]; }
+            my $displayUserName = $newiplist[$i]->[0];
+            if (
+                ${ $uid . $displayUserName }{'realname'}
+                && ( ${ $uid . $displayUserName }{'realname'} ne
+                    $newiplist[$i]->[0] )
+              )
+            {
+                $displayUserName = ${ $uid . $displayUserName }{'realname'};
             }
-      }
+            $useriplist .=
+qq~<a href="$scripturl?action=viewprofile;username=$cloakedUserName">$displayUserName</a>&nbsp;<span style="color: #FF0000;">(<i>$newiplist[$i]->[1]</i>)</span><br />~;
+        }
+    }
 
-      for ($i = 0; $i < @os; $i++) { $os{ $os[$i] }++; }
-      $i = 0;
-      while (($key, $val) = each(%os)) {
-            $newoslist[$i] = [$key, $val];
-            $i++;
-      }
-      $totalos = @newoslist;
-      for ($i = 0; $i < @newoslist; $i++) {
-            if ($newoslist[$i]->[0] =~ /\S+/) {
-                  $oslist .= qq~$newoslist[$i]->[0] &nbsp;<span style="color: #FF0000;">(<i>$newoslist[$i]->[1]</i>)</span><br />~;
-            }
-      }
+    for ( $i = 0 ; $i < @browser ; $i++ ) { $browser{ $browser[$i] }++; }
+    $i = 0;
+    while ( ( $key, $val ) = each(%browser) ) {
+        $newbrowser[$i] = [ $key, $val ];
+        $i++;
+    }
+    $totalbrow = @newbrowser;
+    for ( $i = 0 ; $i < @newbrowser ; $i++ ) {
+        if ( $newbrowser[$i]->[0] =~ /\S+/ ) {
+            $browserlist .=
+qq~$newbrowser[$i]->[0] &nbsp;<span style="color: #FF0000;">(<i>$newbrowser[$i]->[1]</i>)</span><br />~;
+        }
+    }
 
-      for ($i = 0; $i < @to; $i++) { $to{ $to[$i] }++; }
-      $i = 0;
-      while (($key, $val) = each(%to)) {
-            $newtolist[$i] = [$key, $val];
-            $i++;
-      }
-      for ($i = 0; $i < @newtolist; $i++) {
-            if ($newtolist[$i]->[0] =~ /\S+/) {
-                  $scriptcalls .= qq~<a href="$newtolist[$i]->[0]" target="_blank">$newtolist[$i]->[0]</a>&nbsp;<span style="color: #FF0000;">(<i>$newtolist[$i]->[1]</i>)</span><br />~;
-            }
-      }
+    for ( $i = 0 ; $i < @os ; $i++ ) { $os{ $os[$i] }++; }
+    $i = 0;
+    while ( ( $key, $val ) = each(%os) ) {
+        $newoslist[$i] = [ $key, $val ];
+        $i++;
+    }
+    $totalos = @newoslist;
+    for ( $i = 0 ; $i < @newoslist ; $i++ ) {
+        if ( $newoslist[$i]->[0] =~ /\S+/ ) {
+            $oslist .=
+qq~$newoslist[$i]->[0] &nbsp;<span style="color: #FF0000;">(<i>$newoslist[$i]->[1]</i>)</span><br />~;
+        }
+    }
 
-      for ($i = 0; $i < @from; $i++) { $from{ $from[$i] }++; }
-      $i = 0;
-      while (($key, $val) = each(%from)) {
-            $newfromlist[$i] = [$key, $val];
-            $i++;
-      }
-      for ($i = 0; $i < @newfromlist; $i++) {
-            if ($newfromlist[$i]->[0] =~ /\S+/ && $newfromlist[$i]->[0] !~ m~$boardurl~i) {
-            $message = qq~<a href="$newfromlist[$i]->[0]" target="_blank">$newfromlist[$i]->[0]</a>~;
+    for ( $i = 0 ; $i < @to ; $i++ ) { $to{ $to[$i] }++; }
+    $i = 0;
+    while ( ( $key, $val ) = each(%to) ) {
+        $newtolist[$i] = [ $key, $val ];
+        $i++;
+    }
+    for ( $i = 0 ; $i < @newtolist ; $i++ ) {
+        if ( $newtolist[$i]->[0] =~ /\S+/ ) {
+            $scriptcalls .=
+qq~<a href="$newtolist[$i]->[0]" target="_blank">$newtolist[$i]->[0]</a>&nbsp;<span style="color: #FF0000;">(<i>$newtolist[$i]->[1]</i>)</span><br />~;
+        }
+    }
+
+    for ( $i = 0 ; $i < @from ; $i++ ) { $from{ $from[$i] }++; }
+    $i = 0;
+    while ( ( $key, $val ) = each(%from) ) {
+        $newfromlist[$i] = [ $key, $val ];
+        $i++;
+    }
+    for ( $i = 0 ; $i < @newfromlist ; $i++ ) {
+        if (   $newfromlist[$i]->[0] =~ /\S+/
+            && $newfromlist[$i]->[0] !~ m~$boardurl~i )
+        {
+            $message =
+qq~<a href="$newfromlist[$i]->[0]" target="_blank">$newfromlist[$i]->[0]</a>~;
+
             #     &wrap;
             #     if (!$yyYaBBCloaded) { require "$sourcedir/YaBBC.pl"; }
             #     &DoUBBC;
-                  &wrap2;
-                  $referlist .= qq~$message&nbsp;<span style="color: #FF0000;">(<i>$newfromlist[$i]->[1]</i>)</span><br />~;
-            }
-      }
+            &wrap2;
+            $referlist .=
+qq~$message&nbsp;<span style="color: #FF0000;">(<i>$newfromlist[$i]->[1]</i>)</span><br />~;
+        }
+    }
 
-      $yymain .= qq~
+    $yymain .= qq~
 
  <div class="bordercolor" style="padding: 0px; width: 99%; margin-left: 0px; margin-right: auto;">
    <table width="100%" cellspacing="1" cellpadding="4">
@@ -561,8 +634,8 @@ sub ShowClickLog {
    </table>
  </div>~;
 
-      if ($enableclicklog) {
-            $yymain .= qq~
+    if ($enableclicklog) {
+        $yymain .= qq~
 
 <br />
 
@@ -676,22 +749,22 @@ sub ShowClickLog {
    </table>
  </div>
 ~;
-      }
+    }
 
-      $yytitle     = $admin_txt{'693'};
-      $action_area = "showclicks";
-      &AdminTemplate;
+    $yytitle     = $admin_txt{'693'};
+    $action_area = "showclicks";
+    &AdminTemplate;
 }
 
 sub DeleteOldMessages {
-      &is_admin_or_gmod;
+    &is_admin_or_gmod;
 
-      fopen(DELETEOLDMESSAGE, "$vardir/oldestmes.txt");
-      $maxdays = <DELETEOLDMESSAGE>;
-      fclose(DELETEOLDMESSAGE);
+    fopen( DELETEOLDMESSAGE, "$vardir/oldestmes.txt" );
+    $maxdays = <DELETEOLDMESSAGE>;
+    fclose(DELETEOLDMESSAGE);
 
-      $yytitle = "$aduptxt{'04'}";
-      $yymain .= qq~
+    $yytitle = "$aduptxt{'04'}";
+    $yymain .= qq~
 <form action="$adminurl?action=removeoldthreads" method="post">
  <div class="bordercolor" style="padding: 0px; width: 99%; margin-left: 0px; margin-right: auto;">
    <table width="100%" cellspacing="1" cellpadding="4">
@@ -711,22 +784,23 @@ sub DeleteOldMessages {
       <label for="maxdays">$admin_txt{'124'} <input type=text name="maxdays" id="maxdays" size="4" value="$maxdays" /> $admin_txt{'579'} $admin_txt{'2'}:</label><br /><br />
       <div align="left" style="margin-left: 25px; margin-right: auto;">~;
 
-      unless ($mloaded == 1) { require "$boardsdir/forum.master"; }
+    unless ( $mloaded == 1 ) { require "$boardsdir/forum.master"; }
 
-      foreach $catid (@categoryorder) {
-            $boardlist = $cat{$catid};
-            (@bdlist) = split(/\,/, $boardlist);
-            ($catname, $catperms) = split(/\|/, $catinfo{"$catid"});
+    foreach $catid (@categoryorder) {
+        $boardlist = $cat{$catid};
+        (@bdlist) = split( /\,/, $boardlist );
+        ( $catname, $catperms ) = split( /\|/, $catinfo{"$catid"} );
 
-            foreach $curboard (@bdlist) {
-                  ($boardname, $boardperms, $boardview) = split(/\|/, $board{"$curboard"});
+        foreach $curboard (@bdlist) {
+            ( $boardname, $boardperms, $boardview ) =
+              split( /\|/, $board{"$curboard"} );
 
-                  $selectname = $curboard . 'check';
-                  $yymain .= qq~
+            $selectname = $curboard . 'check';
+            $yymain .= qq~
             <input type="checkbox" name="$selectname" id="$selectname" value="1" />&nbsp;<label for="$selectname">$boardname</label><br />~;
-            }
-      }
-      $yymain .= qq~
+        }
+    }
+    $yymain .= qq~
       </div><br />
      </td>
     </tr>
@@ -739,101 +813,125 @@ sub DeleteOldMessages {
  </div>
 </form>~;
 
-      $action_area = "deleteoldthreads";
-      &AdminTemplate;
+    $action_area = "deleteoldthreads";
+    &AdminTemplate;
 }
 
 sub DeleteMultiMembers {
-      &is_admin_or_gmod;
+    &is_admin_or_gmod;
 
-      &automaintenance("on");
+    &automaintenance("on");
 
-      my ($count, $currentmem, $start, $sortmode, $sortorder, $deadusers, @userslist);
-      chomp $FORM{'button'};
-      chomp $FORM{'emailsubject'};
-      chomp $FORM{'emailtext'};
-      $tmpemailsubject = $FORM{'emailsubject'};
-      $tmpemailtext = $FORM{'emailtext'};
-      if ($FORM{'button'} != 1 && $FORM{'button'} != 2) { &admin_fatal_error('no_access'); }
+    my (
+        $count,     $currentmem, $start, $sortmode,
+        $sortorder, $deadusers,  @userslist
+    );
+    chomp $FORM{'button'};
+    chomp $FORM{'emailsubject'};
+    chomp $FORM{'emailtext'};
+    $tmpemailsubject = $FORM{'emailsubject'};
+    $tmpemailtext    = $FORM{'emailtext'};
+    if ( $FORM{'button'} != 1 && $FORM{'button'} != 2 ) {
+        &admin_fatal_error('no_access');
+    }
 
-      if ($FORM{'del_mail'} || $FORM{'emailtext'} ne '') { require "$sourcedir/Mailer.pl"; }
+    if ( $FORM{'del_mail'} || $FORM{'emailtext'} ne '' ) {
+        require "$sourcedir/Mailer.pl";
+    }
 
-      fopen(FILE, "$memberdir/memberlist.txt");
-      @memnum = <FILE>;
-      fclose(FILE);
-      $count = 0;
+    fopen( FILE, "$memberdir/memberlist.txt" );
+    @memnum = <FILE>;
+    fclose(FILE);
+    $count = 0;
 
-      if ($FORM{'button'} == 1 && $FORM{'emailtext'} ne "") {
-            $FORM{'emailsubject'} =~ s~\|~&#124~g;
-            $FORM{'emailtext'}    =~ s~\|~&#124~g;
-            $FORM{'emailtext'} =~ s/\r(?=\n*)//g;
-            $mailline = qq~$date|$FORM{'emailsubject'}|$FORM{'emailtext'}|$username~;
-            &MailList($mailline);
-      }
+    if ( $FORM{'button'} == 1 && $FORM{'emailtext'} ne "" ) {
+        $FORM{'emailsubject'} =~ s~\|~&#124~g;
+        $FORM{'emailtext'}    =~ s~\|~&#124~g;
+        $FORM{'emailtext'}    =~ s/\r(?=\n*)//g;
+        $mailline =
+          qq~$date|$FORM{'emailsubject'}|$FORM{'emailtext'}|$username~;
+        &MailList($mailline);
+    }
 
-      my $templanguage = $language;
+    my $templanguage = $language;
 
-      while (@memnum >= $count) {
-            $currentmem = $FORM{"member$count"};
-            if (exists $FORM{"member$count"}) {
-                  if (-e "$memberdir/$currentmem.vars") { # Bypass dead entries.
-                        &LoadUser($currentmem);
-                        if ($FORM{'emailtext'} ne '') {
-                              $emailsubject = $FORM{'emailsubject'};
-                              $emailtext = $FORM{'emailtext'};
-                              $emailsubject =~ s~\[name\]~${$uid.$currentmem}{'realname'}~ig;
-                              $emailsubject =~ s~\[username\]~$currentmem~ig;
-                              $emailtext =~ s~\[name\]~${$uid.$currentmem}{'realname'}~ig;
-                              $emailtext =~ s~\[username\]~$currentmem~ig;
-                              &sendmail(${$uid.$currentmem}{'email'}, $emailsubject, $emailtext);
-                        } elsif ($FORM{'del_mail'}) {
-                              $language = ${$uid.$currentmem}{'language'};
-                              &LoadLanguage('Email');
-                              my $message = &template_email($deleteduseremail, {'displayname' => ${$uid.$currentmem}{'realname'}});
-                              &sendmail(${$uid.$currentmem}{'email'}, "$deletedusersybject $mbname", $message, '', $emailcharset);
+    while ( @memnum >= $count ) {
+        $currentmem = $FORM{"member$count"};
+        if ( exists $FORM{"member$count"} ) {
+            if ( -e "$memberdir/$currentmem.vars" ) {    # Bypass dead entries.
+                &LoadUser($currentmem);
+                if ( $FORM{'emailtext'} ne '' ) {
+                    $emailsubject = $FORM{'emailsubject'};
+                    $emailtext    = $FORM{'emailtext'};
+                    $emailsubject =~
+                      s~\[name\]~${$uid.$currentmem}{'realname'}~ig;
+                    $emailsubject =~ s~\[username\]~$currentmem~ig;
+                    $emailtext =~ s~\[name\]~${$uid.$currentmem}{'realname'}~ig;
+                    $emailtext =~ s~\[username\]~$currentmem~ig;
+                    &sendmail( ${ $uid . $currentmem }{'email'},
+                        $emailsubject, $emailtext );
+                }
+                elsif ( $FORM{'del_mail'} ) {
+                    $language = ${ $uid . $currentmem }{'language'};
+                    &LoadLanguage('Email');
+                    my $message = &template_email(
+                        $deleteduseremail,
+                        {
+                            'displayname' => ${ $uid . $currentmem }{'realname'}
                         }
-                        undef %{$uid.$currentmem} if $currentmem ne $username;
-                  }
-                  if ($FORM{'button'} == 2) {
-                        unlink("$memberdir/$currentmem.dat");
-                        unlink("$memberdir/$currentmem.vars");
-                        unlink("$memberdir/$currentmem.ims");
-                        unlink("$memberdir/$currentmem.msg");
-                        unlink("$memberdir/$currentmem.log");
-                        unlink("$memberdir/$currentmem.rlog");
-                        unlink("$memberdir/$currentmem.outbox");
-                        unlink("$memberdir/$currentmem.imstore");
-                        unlink("$memberdir/$currentmem.imdraft");
-                        # save name up
-                        push (@userslist, $currentmem);
-                        # For security, remove username from mod position
-                        &KillModerator($currentmem);
-                  }
+                    );
+                    &sendmail(
+                        ${ $uid . $currentmem }{'email'},
+                        "$deletedusersybject $mbname",
+                        $message, '', $emailcharset
+                    );
+                }
+                undef %{ $uid . $currentmem } if $currentmem ne $username;
             }
-            $count++;
-      }
-      if (@userslist) { &MemberIndex("remove", join(',', @userslist)); }
+            if ( $FORM{'button'} == 2 ) {
+                unlink("$memberdir/$currentmem.dat");
+                unlink("$memberdir/$currentmem.vars");
+                unlink("$memberdir/$currentmem.ims");
+                unlink("$memberdir/$currentmem.msg");
+                unlink("$memberdir/$currentmem.log");
+                unlink("$memberdir/$currentmem.rlog");
+                unlink("$memberdir/$currentmem.outbox");
+                unlink("$memberdir/$currentmem.imstore");
+                unlink("$memberdir/$currentmem.imdraft");
 
-      &automaintenance("off");
+                # save name up
+                push( @userslist, $currentmem );
 
-      $language = $templanguage;
-      if ($FORM{'button'} == 1) {
-            $yySetLocation = qq~$adminurl?action=mailing;sort=$INFO{'sort'}~;
-      } else {
-            $yySetLocation = qq~$adminurl?action=viewmembers;start=$INFO{'start'};sort=$INFO{'sort'};reversed=$INFO{'reversed'}~;
-      }
-      &redirectexit;
+                # For security, remove username from mod position
+                &KillModerator($currentmem);
+            }
+        }
+        $count++;
+    }
+    if (@userslist) { &MemberIndex( "remove", join( ',', @userslist ) ); }
+
+    &automaintenance("off");
+
+    $language = $templanguage;
+    if ( $FORM{'button'} == 1 ) {
+        $yySetLocation = qq~$adminurl?action=mailing;sort=$INFO{'sort'}~;
+    }
+    else {
+        $yySetLocation =
+qq~$adminurl?action=viewmembers;start=$INFO{'start'};sort=$INFO{'sort'};reversed=$INFO{'reversed'}~;
+    }
+    &redirectexit;
 }
 
 sub ipban {
-      &is_admin_or_gmod;
+    &is_admin_or_gmod;
 
-      my ($eban, $iban, $uban) = ($email_banlist, $ip_banlist, $user_banlist);
-      $iban =~ s/,/\n/g;
-      $eban =~ s/,/\n/g;
-      $uban =~ s/,/\n/g;
+    my ( $eban, $iban, $uban ) = ( $email_banlist, $ip_banlist, $user_banlist );
+    $iban =~ s/,/\n/g;
+    $eban =~ s/,/\n/g;
+    $uban =~ s/,/\n/g;
 
-      $yymain .= qq~
+    $yymain .= qq~
 <form action="$adminurl?action=ipban2" method="post">
  <div class="bordercolor" style="padding: 0px; width: 99%; margin-left: 0px; margin-right: auto;">
    <table width="100%" cellspacing="1" cellpadding="4">
@@ -881,79 +979,87 @@ sub ipban {
  </div>
 </form>~;
 
-      $yytitle     = "$admin_txt{'340'}";
-      $action_area = "ipban";
-      &AdminTemplate;
+    $yytitle     = "$admin_txt{'340'}";
+    $action_area = "ipban";
+    &AdminTemplate;
 }
 
 sub ipban2 {
-      &is_admin_or_gmod;
+    &is_admin_or_gmod;
 
-      $FORM{'ban'} =~ tr/\r//d;
-      $FORM{'ban'} =~ s/\A[\s\n]+| |[\s\n]+\Z//g;
-      $FORM{'ban'} =~ s~\n\s*\n~\n~g;
-      $FORM{'ban'} =~ s/\n/,/g;
-      $FORM{'ban_email'} =~ tr/\r//d;
-      $FORM{'ban_email'} =~ s/\A[\s\n]+| |[\s\n]+\Z//g;
-      $FORM{'ban_email'} =~ s~\n\s*\n~\n~g;
-      $FORM{'ban_email'} =~ s/\n/,/g;
-      $FORM{'ban_memname'} =~ tr/\r//d;
-      $FORM{'ban_memname'} =~ s/\A[\s\n]+| |[\s\n]+\Z//g;
-      $FORM{'ban_memname'} =~ s~\n\s*\n~\n~g;
-      $FORM{'ban_memname'} =~ s/\n/,/g;
+    $FORM{'ban'}         =~ tr/\r//d;
+    $FORM{'ban'}         =~ s/\A[\s\n]+| |[\s\n]+\Z//g;
+    $FORM{'ban'}         =~ s~\n\s*\n~\n~g;
+    $FORM{'ban'}         =~ s/\n/,/g;
+    $FORM{'ban_email'}   =~ tr/\r//d;
+    $FORM{'ban_email'}   =~ s/\A[\s\n]+| |[\s\n]+\Z//g;
+    $FORM{'ban_email'}   =~ s~\n\s*\n~\n~g;
+    $FORM{'ban_email'}   =~ s/\n/,/g;
+    $FORM{'ban_memname'} =~ tr/\r//d;
+    $FORM{'ban_memname'} =~ s/\A[\s\n]+| |[\s\n]+\Z//g;
+    $FORM{'ban_memname'} =~ s~\n\s*\n~\n~g;
+    $FORM{'ban_memname'} =~ s/\n/,/g;
 
-      ($email_banlist, $ip_banlist, $user_banlist) = ($FORM{'ban_email'}, $FORM{'ban'}, $FORM{'ban_memname'});
+    ( $email_banlist, $ip_banlist, $user_banlist ) =
+      ( $FORM{'ban_email'}, $FORM{'ban'}, $FORM{'ban_memname'} );
 
-      require "$admindir/NewSettings.pl";
-      &SaveSettingsTo('Settings.pl');
+    require "$admindir/NewSettings.pl";
+    &SaveSettingsTo('Settings.pl');
 
-      $yySetLocation = $adminurl;
-      &redirectexit;
+    $yySetLocation = $adminurl;
+    &redirectexit;
 }
 
 sub ipban_update {
-      # This is for quick updating for banning + unbanning
-      &is_admin_or_gmod;
 
-      my ($ban_details, @banlist);
-      if ($INFO{'ban'}) {
-            foreach (split(/,/, $ip_banlist)) {
-                  if ($_ ne $INFO{'ban'}) { push(@banlist, $_); }
-            }
-            push(@banlist, $INFO{'ban'}) unless $INFO{'unban'};
-            $ip_banlist = join(',', @banlist);
+    # This is for quick updating for banning + unbanning
+    &is_admin_or_gmod;
 
-      } elsif ($INFO{'ban_email'}) {
-            foreach (split(/,/, $email_banlist)) {
-                  if ($_ ne $INFO{'ban_email'}) { push(@banlist, $_); }
-            }
-            push(@banlist, $INFO{'ban_email'}) unless $INFO{'unban'};
-            $email_banlist = join(',', @banlist);
+    my ( $ban_details, @banlist );
+    if ( $INFO{'ban'} ) {
+        foreach ( split( /,/, $ip_banlist ) ) {
+            if ( $_ ne $INFO{'ban'} ) { push( @banlist, $_ ); }
+        }
+        push( @banlist, $INFO{'ban'} ) unless $INFO{'unban'};
+        $ip_banlist = join( ',', @banlist );
 
-      } elsif ($INFO{'ban_memname'}) {
-            $INFO{'ban_memname'} = $do_scramble_id ? &decloak($INFO{'ban_memname'}) : $INFO{'ban_memname'};
-            foreach (split(/,/, $user_banlist)) {
-                  if ($_ ne $INFO{'ban_memname'}) { push(@banlist, $_); }
-            }
-            push(@banlist, $INFO{'ban_memname'}) unless $INFO{'unban'};
-            $user_banlist = join(',', @banlist);
-      }
+    }
+    elsif ( $INFO{'ban_email'} ) {
+        foreach ( split( /,/, $email_banlist ) ) {
+            if ( $_ ne $INFO{'ban_email'} ) { push( @banlist, $_ ); }
+        }
+        push( @banlist, $INFO{'ban_email'} ) unless $INFO{'unban'};
+        $email_banlist = join( ',', @banlist );
 
-      require "$admindir/NewSettings.pl";
-      &SaveSettingsTo('Settings.pl');
+    }
+    elsif ( $INFO{'ban_memname'} ) {
+        $INFO{'ban_memname'} =
+            $do_scramble_id
+          ? &decloak( $INFO{'ban_memname'} )
+          : $INFO{'ban_memname'};
+        foreach ( split( /,/, $user_banlist ) ) {
+            if ( $_ ne $INFO{'ban_memname'} ) { push( @banlist, $_ ); }
+        }
+        push( @banlist, $INFO{'ban_memname'} ) unless $INFO{'unban'};
+        $user_banlist = join( ',', @banlist );
+    }
 
-      $yySetLocation = qq~$scripturl?action=viewprofile;username=$INFO{'username'}~;
-      &redirectexit;
+    require "$admindir/NewSettings.pl";
+    &SaveSettingsTo('Settings.pl');
+
+    $yySetLocation =
+      qq~$scripturl?action=viewprofile;username=$INFO{'username'}~;
+    &redirectexit;
 }
 
 sub ver_detail {
-      &is_admin_or_gmod;
+    &is_admin_or_gmod;
 
-      require "$boarddir/$yyexec.$yyext";
-      $adminindexplver =~ s/\$Revision\: (.*?) \$/Build $1/ig;
-      $YaBBplver =~ s/\$Revision\: (.*?) \$/Build $1/ig;
+    require "$boarddir/$yyexec.$yyext";
+    $adminindexplver =~ s/\$Revision\: (.*?) \$/Build $1/ig;
+    $YaBBplver       =~ s/\$Revision\: (.*?) \$/Build $1/ig;
 
-      $yymain .= qq~
+    $yymain .= qq~
       <div class="bordercolor" style="padding: 0px; width: 99%; margin-left: 0px; margin-right: auto;">
       <table width="100%" cellspacing="1" cellpadding="4">
       <tr valign="middle">
@@ -986,118 +1092,126 @@ sub ver_detail {
             <td class="windowbg2" align="left"><i>$adminindexplver</i></td>
       </tr>~;
 
-      opendir(LNGDIR, $langdir);
-      my @lfilesanddirs = readdir(LNGDIR);
-      close(LNGDIR);
-      foreach $fld (@lfilesanddirs) {
-            if (-d "$langdir/$fld" && $fld =~ m^\A[0-9a-zA-Z_\#\%\-\:\+\?\$\&\~\,\@/]+\Z^ && -e "$langdir/$fld/Main.lng") {
-                  fopen(FILE, "$langdir/$fld/version.txt");
-                  my @ver = <FILE>;
-                  fclose(FILE);
-                  $yymain .= qq~
+    opendir( LNGDIR, $langdir );
+    my @lfilesanddirs = readdir(LNGDIR);
+    close(LNGDIR);
+    foreach $fld (@lfilesanddirs) {
+        if (   -d "$langdir/$fld"
+            && $fld =~ m^\A[0-9a-zA-Z_\#\%\-\:\+\?\$\&\~\,\@/]+\Z^
+            && -e "$langdir/$fld/Main.lng" )
+        {
+            fopen( FILE, "$langdir/$fld/version.txt" );
+            my @ver = <FILE>;
+            fclose(FILE);
+            $yymain .= qq~
       <tr>
             <td width="30%" class="windowbg2" align="left">$fld Language Pack</td>
             <td width="35%" class="windowbg2" align="left"><i>$ver[0]</i></td>
       </tr>~;
-            }
-      }
-      $yymain .= qq~
+        }
+    }
+    $yymain .= qq~
       <tr valign="middle">
             <td align="left" class="titlebg" colspan="3"><b>$admin_txt{'430'}</b></td>
       </tr>~;
 
-      opendir(DIR, $admindir);
-      my @adminDIR = readdir(DIR);
-      close(DIR);
-      @adminDIR = sort (@adminDIR);
-      foreach my $fileinDIR (@adminDIR) {
-            chomp $fileinDIR;
-            if ($fileinDIR =~ m/\.pl\Z/) {
-                  require "$admindir/$fileinDIR";
-                  my $txtrevision = lc $fileinDIR;
-                  $txtrevision =~ s/\.pl/plver/ig;
-                  $$txtrevision =~ s/\$Revision\: (.*?) \$/Build $1/ig;
-                  $yymain .= qq~
+    opendir( DIR, $admindir );
+    my @adminDIR = readdir(DIR);
+    close(DIR);
+    @adminDIR = sort (@adminDIR);
+    foreach my $fileinDIR (@adminDIR) {
+        chomp $fileinDIR;
+        if ( $fileinDIR =~ m/\.pl\Z/ ) {
+            require "$admindir/$fileinDIR";
+            my $txtrevision = lc $fileinDIR;
+            $txtrevision  =~ s/\.pl/plver/ig;
+            $$txtrevision =~ s/\$Revision\: (.*?) \$/Build $1/ig;
+            $yymain .= qq~
       <tr>
             <td class="windowbg2" align="left">$fileinDIR</td>
             <td class="windowbg2" align="left"><i>$$txtrevision</i></td>
       </tr>~;
-            }
-      }
-      $yymain .= qq~
+        }
+    }
+    $yymain .= qq~
       <tr valign="middle">
             <td align="left" class="titlebg" colspan="3"><b>$admin_txt{'431'}</b></td>
       </tr>~;
 
-      opendir(DIR, $sourcedir);
-      my @sourceDIR = readdir(DIR);
-      close(DIR);
-      @sourceDIR = sort (@sourceDIR);
-      foreach my $fileinDIR (@sourceDIR) {
-            chomp $fileinDIR;
-            if ($fileinDIR =~ m/\.pl\Z/) {
-                  require "$sourcedir/$fileinDIR";
-                  my $txtrevision = lc $fileinDIR;
-                  $txtrevision =~ s/\.pl/plver/ig;
-                  $$txtrevision =~ s/\$Revision\: (.*?) \$/Build $1/ig;
-                  $yymain .= qq~
+    opendir( DIR, $sourcedir );
+    my @sourceDIR = readdir(DIR);
+    close(DIR);
+    @sourceDIR = sort (@sourceDIR);
+    foreach my $fileinDIR (@sourceDIR) {
+        chomp $fileinDIR;
+        if ( $fileinDIR =~ m/\.pl\Z/ ) {
+            require "$sourcedir/$fileinDIR";
+            my $txtrevision = lc $fileinDIR;
+            $txtrevision  =~ s/\.pl/plver/ig;
+            $$txtrevision =~ s/\$Revision\: (.*?) \$/Build $1/ig;
+            $yymain .= qq~
                   <tr>
                         <td class="windowbg2" align="left">$fileinDIR</td>
                         <td class="windowbg2" align="left"><i>$$txtrevision</i></td>
                   </tr>~;
-            }
-      }
+        }
+    }
 
-      $yymain .= qq~
+    $yymain .= qq~
       </table>
       </div>~;
 
-      $yytitle = $admin_txt{'429'};
-      $action_area = "detailedversion";
-      &AdminTemplate;
+    $yytitle     = $admin_txt{'429'};
+    $action_area = "detailedversion";
+    &AdminTemplate;
 }
 
 sub Refcontrol {
-      &is_admin_or_gmod;
-      &LoadLanguage('RefControl');
+    &is_admin_or_gmod;
+    &LoadLanguage('RefControl');
 
-      fopen(FILE, "$sourcedir/SubList.pl");
-      @scriptlines = <FILE>;
-      fclose(FILE);
+    fopen( FILE, "$sourcedir/SubList.pl" );
+    @scriptlines = <FILE>;
+    fclose(FILE);
 
-      fopen(FILE, "$vardir/allowed.txt");
-      @allowed = <FILE>;
-      fclose(FILE);
+    fopen( FILE, "$vardir/allowed.txt" );
+    @allowed = <FILE>;
+    fclose(FILE);
 
-      $startread = 0;
-      $counter   = 0;
+    $startread = 0;
+    $counter   = 0;
 
-      foreach $scriptline (@scriptlines) {
-            chomp $scriptline;
-            if (substr($scriptline, 0, 1) eq "'") {
-                  $scriptline =~ /\'(.*?)\'/;
-                  $actionfound = $1;
-                  push(@actfound, $actionfound);
-                  $counter++;
-            }
-      }
-      $column  = int($counter / 3);
-      $counter = 0;
-      foreach $actfound (@actfound) {
-            $selected = "";
-            foreach $allow (@allowed) {
-                  chomp $allow;
-                  if ($actfound eq $allow) { $selected = ' checked="checked"'; last; }
-            }
-            $refexpl_txt{$actfound} =~ s/"/'/g; # XHTML Validation
-            $dismenu .= qq~<input type="checkbox" name="$actfound" id="$actfound"$selected />&nbsp;<label for="$actfound"><img src="$imagesdir/question.gif" align="middle" alt="$reftxt{'1a'} $refexpl_txt{$actfound}" title="$reftxt{'1a'} $refexpl_txt{$actfound}" border="0" /> $actfound</label ><br />\n~;
+    foreach $scriptline (@scriptlines) {
+        chomp $scriptline;
+        if ( substr( $scriptline, 0, 1 ) eq "'" ) {
+            $scriptline =~ /\'(.*?)\'/;
+            $actionfound = $1;
+            push( @actfound, $actionfound );
             $counter++;
-            if ($counter > $column + 1) {
-                  $dismenu .= qq~</td><td align="left" class="windowbg2" valign="top" width="33%">~;
-                  $counter = 0;
+        }
+    }
+    $column  = int( $counter / 3 );
+    $counter = 0;
+    foreach $actfound (@actfound) {
+        $selected = "";
+        foreach $allow (@allowed) {
+            chomp $allow;
+            if ( $actfound eq $allow ) {
+                $selected = ' checked="checked"';
+                last;
             }
-      }
-      $yymain .= qq~
+        }
+        $refexpl_txt{$actfound} =~ s/"/'/g;    # XHTML Validation
+        $dismenu .=
+qq~<input type="checkbox" name="$actfound" id="$actfound"$selected />&nbsp;<label for="$actfound"><img src="$imagesdir/question.gif" align="middle" alt="$reftxt{'1a'} $refexpl_txt{$actfound}" title="$reftxt{'1a'} $refexpl_txt{$actfound}" border="0" /> $actfound</label ><br />\n~;
+        $counter++;
+        if ( $counter > $column + 1 ) {
+            $dismenu .=
+qq~</td><td align="left" class="windowbg2" valign="top" width="33%">~;
+            $counter = 0;
+        }
+    }
+    $yymain .= qq~
 <form action="$adminurl?action=referer_control2" method="post">
  <div class="bordercolor" style="padding: 0px; width: 99%; margin-left: 0px; margin-right: auto;">
    <table width="100%" cellspacing="1" cellpadding="4">
@@ -1128,51 +1242,51 @@ sub Refcontrol {
  </div>
 </form>~;
 
-      $yytitle     = "$reftxt{'1'}";
-      $action_area = "referer_control";
-      &AdminTemplate;
+    $yytitle     = "$reftxt{'1'}";
+    $action_area = "referer_control";
+    &AdminTemplate;
 }
 
 sub Refcontrol2 {
-      &is_admin_or_gmod;
+    &is_admin_or_gmod;
 
-      fopen(FILE, "$sourcedir/SubList.pl");
-      @scriptlines = <FILE>;
-      fclose(FILE);
+    fopen( FILE, "$sourcedir/SubList.pl" );
+    @scriptlines = <FILE>;
+    fclose(FILE);
 
-      $startread = 0;
-      $counter   = 0;
-      foreach $scriptline (@scriptlines) {
-            chomp $scriptline;
-            if (substr($scriptline, 0, 1) eq "'") {
-                  $scriptline =~ /\'(.*?)\'/;
-                  $actionfound = $1;
-                  push(@actfound, $actionfound);
-                  $counter++;
-            }
-      }
+    $startread = 0;
+    $counter   = 0;
+    foreach $scriptline (@scriptlines) {
+        chomp $scriptline;
+        if ( substr( $scriptline, 0, 1 ) eq "'" ) {
+            $scriptline =~ /\'(.*?)\'/;
+            $actionfound = $1;
+            push( @actfound, $actionfound );
+            $counter++;
+        }
+    }
 
-      foreach $actfound (@actfound) {
-            if ($FORM{$actfound}) { push(@outfile, "$actfound\n"); }
-      }
+    foreach $actfound (@actfound) {
+        if ( $FORM{$actfound} ) { push( @outfile, "$actfound\n" ); }
+    }
 
-      fopen(FILE, ">$vardir/allowed.txt");
-      print FILE @outfile;
-      fclose(FILE);
+    fopen( FILE, ">$vardir/allowed.txt" );
+    print FILE @outfile;
+    fclose(FILE);
 
-      $yySetLocation = $adminurl;
-      &redirectexit;
+    $yySetLocation = $adminurl;
+    &redirectexit;
 }
 
 sub AddMember {
-      &is_admin_or_gmod;
-      &LoadLanguage('Register');
-      if ($regcheck) {
-            require "$sourcedir/Decoder.pl";
-            &validation_code;
-      }
+    &is_admin_or_gmod;
+    &LoadLanguage('Register');
+    if ($regcheck) {
+        require "$sourcedir/Decoder.pl";
+        &validation_code;
+    }
 
-      $yymain .= qq~
+    $yymain .= qq~
 <script language="JavaScript1.2" type="text/javascript" src="$yyhtml_root/ajax.js"></script>
 <form action="$adminurl?action=addmember2" method="post" name="creator">
    <table align="center" border="0" cellspacing="1" cellpadding="3" class="bordercolor">
@@ -1193,29 +1307,34 @@ sub AddMember {
      <td width="30%" class="windowbg"><label for="email"><b>$register_txt{'69'}:</b></label></td>
      <td width="70%" class="windowbg"><input type="text" maxlength="100" name="email" id="email" onchange="checkAvail('$scripturl',this.value,'email')" size="50" /><div id="emailavailability"></div></td>
     </tr>~;
-      if ($allow_hide_email == 1) {
-            $yymain .= qq~
+    if ( $allow_hide_email == 1 ) {
+        $yymain .= qq~
     <tr>
      <td width="30%" class="windowbg"><label for="hideemail"><b>$register_txt{'721'}</b></label></td>
      <td width="70%" class="windowbg"><input type="checkbox" name="hideemail" id="hideemail" value="1" checked="checked" /></td>
     </tr>~;
-      }
+    }
 
-      # Language selector
-      $yymain .= qq~
+    # Language selector
+    $yymain .= qq~
     <tr>
      <td width="30%" class="windowbg"><label for="userlang"><b>$register_txt{'101'}</b></label></td>
      <td width="70%" class="windowbg"><select name="userlang" id="userlang">~;
-      opendir(LNGDIR, $langdir);
-      foreach (sort {lc($a) cmp lc($b)} readdir(LNGDIR)) {
-            if (-e "$langdir/$_/Main.lng") { $yymain .= qq~<option value="$_"~ . ($_ eq $language ? ' selected="selected"' : '') . qq~>$_</option>~; }
-      }
-      close(LNGDIR);
-      $yymain .= qq~</select></td>
+    opendir( LNGDIR, $langdir );
+    foreach ( sort { lc($a) cmp lc($b) } readdir(LNGDIR) ) {
+        if ( -e "$langdir/$_/Main.lng" ) {
+            $yymain .=
+                qq~<option value="$_"~
+              . ( $_ eq $language ? ' selected="selected"' : '' )
+              . qq~>$_</option>~;
+        }
+    }
+    close(LNGDIR);
+    $yymain .= qq~</select></td>
     </tr>~;
 
-      unless ($emailpassword) {
-            $yymain .= qq~
+    unless ($emailpassword) {
+        $yymain .= qq~
     <tr>
      <td width="30%" class="windowbg"><label for="passwrd1"><b>$register_txt{'81'}:</b></label></td>
      <td width="70%" class="windowbg">
@@ -1238,10 +1357,10 @@ sub AddMember {
       <div style="color: red; font-weight: bold; display: none" id="cappasswrd1_char">$register_txt{'wrong_char'}: <span id="cappasswrd1_character">&nbsp;</span></div>
      </td>
     </tr>~;
-      }
+    }
 
-      if ($regcheck) {
-            $yymain .= qq~
+    if ($regcheck) {
+        $yymain .= qq~
     <tr>
      <td width="30%" class="windowbg"><label for="verification"><b>$floodtxt{'1'}:</b></label></td>
      <td width="70%" class="windowbg">$showcheck<br /><label for="verification"><span class="small">$floodtxt{'casewarning'}</span></label></td>
@@ -1250,9 +1369,9 @@ sub AddMember {
      <td width="30%" class="windowbg"><label for="verification"><b>$floodtxt{'3'}:</b></label></td>
      <td width="70%" class="windowbg"><input type="text" maxlength="30" name="verification" id="verification" size="30" /></td>
     </tr>~;
-      }
+    }
 
-      $yymain .= qq~
+    $yymain .= qq~
     <tr>
      <td colspan="2" align="center" class="catbg">
       <input type="submit" value="$register_txt{'97'}" class="button" />
@@ -1361,7 +1480,7 @@ sub AddMember {
 </script>
 ~;
 
-      $yymain .= qq~
+    $yymain .= qq~
 <script type="text/javascript" language="JavaScript">
  <!--
       document.creator.regusername.focus();
@@ -1369,182 +1488,269 @@ sub AddMember {
  //-->
 </script>~;
 
-      $yytitle     = "$register_txt{'97'}";
-      $action_area = "addmember";
-      &AdminTemplate;
+    $yytitle     = "$register_txt{'97'}";
+    $action_area = "addmember";
+    &AdminTemplate;
 }
 
 sub AddMember2 {
-      &is_admin_or_gmod;
-      &LoadLanguage('Register');
-      &LoadLanguage('Main');
-      my %member;
-      while (($key, $value) = each(%FORM)) {
-            $value =~ s~\A\s+~~;
-            $value =~ s~\s+\Z~~;
-            $value =~ s~[\n\r]~~g;
-            $member{$key} = $value;
-      }
-      $member{'username'} =~ s/\s/_/g;
+    &is_admin_or_gmod;
+    &LoadLanguage('Register');
+    &LoadLanguage('Main');
+    my %member;
+    while ( ( $key, $value ) = each(%FORM) ) {
+        $value =~ s~\A\s+~~;
+        $value =~ s~\s+\Z~~;
+        $value =~ s~[\n\r]~~g;
+        $member{$key} = $value;
+    }
+    $member{'username'} =~ s/\s/_/g;
 
-      # Make sure users can't register with banned details
-      &banning($member{'regusername'}, $member{'email'}, 1);
+    # Make sure users can't register with banned details
+    &banning( $member{'regusername'}, $member{'email'}, 1 );
 
-      # check if there is a system hash named like this by checking existence through size
-      my $hsize = keys(%{ $member{'regusername'} });
-      if ($hsize > 0) { &admin_fatal_error("system_prohibited_id"); }
-      if (length($member{'regusername'}) > 25) { $member{'regusername'} = substr($member{'regusername'}, 0, 25); }
-      &admin_fatal_error("no_username","($member{'regusername'})") if $member{'regusername'} eq '';
-      &admin_fatal_error("id_alfa_only","($member{'regusername'})") if $member{'regusername'} eq '_' || $member{'regusername'} eq '|';
-      &admin_fatal_error("id_reserved","($member{'regusername'})") if $member{'regusername'} =~ /guest/i;
-      &admin_fatal_error("invalid_character","$register_txt{'35'} $register_txt{'241re'}") if $member{'regusername'} =~ /[^\w\+\-\.\@]/;
-      &admin_fatal_error("no_email","($member{'regusername'})") if $member{'email'} eq "";
-      &admin_fatal_error("id_taken","($member{'regusername'})") if -e "$memberdir/$member{'regusername'}.vars";
-      &admin_fatal_error("password_is_userid") if $member{'regusername'} eq $member{'passwrd1'};
+# check if there is a system hash named like this by checking existence through size
+    my $hsize = keys( %{ $member{'regusername'} } );
+    if ( $hsize > 0 ) { &admin_fatal_error("system_prohibited_id"); }
+    if ( length( $member{'regusername'} ) > 25 ) {
+        $member{'regusername'} = substr( $member{'regusername'}, 0, 25 );
+    }
+    &admin_fatal_error( "no_username", "($member{'regusername'})" )
+      if $member{'regusername'} eq '';
+    &admin_fatal_error( "id_alfa_only", "($member{'regusername'})" )
+      if $member{'regusername'} eq '_' || $member{'regusername'} eq '|';
+    &admin_fatal_error( "id_reserved", "($member{'regusername'})" )
+      if $member{'regusername'} =~ /guest/i;
+    &admin_fatal_error( "invalid_character",
+        "$register_txt{'35'} $register_txt{'241re'}" )
+      if $member{'regusername'} =~ /[^\w\+\-\.\@]/;
+    &admin_fatal_error( "no_email", "($member{'regusername'})" )
+      if $member{'email'} eq "";
+    &admin_fatal_error( "id_taken", "($member{'regusername'})" )
+      if -e "$memberdir/$member{'regusername'}.vars";
+    &admin_fatal_error("password_is_userid")
+      if $member{'regusername'} eq $member{'passwrd1'};
 
-      &FromChars($member{'regrealname'});
-      $convertstr = $member{'regrealname'};
-      $convertcut = 30;
-      &CountChars;
-      $member{'regrealname'} = $convertstr;
-      &admin_fatal_error("realname_to_long","($member{'regrealname'} => $convertstr)") if $cliped;
-      &admin_fatal_error("invalid_character", "$register_txt{'38'} $register_txt{'241re'}") if $member{'regrealname'} =~ /[^ \w\x80-\xFF\[\]\(\)#\%\+,\-\|\.:=\?\@\^]/;
+    &FromChars( $member{'regrealname'} );
+    $convertstr = $member{'regrealname'};
+    $convertcut = 30;
+    &CountChars;
+    $member{'regrealname'} = $convertstr;
+    &admin_fatal_error( "realname_to_long",
+        "($member{'regrealname'} => $convertstr)" )
+      if $cliped;
+    &admin_fatal_error( "invalid_character",
+        "$register_txt{'38'} $register_txt{'241re'}" )
+      if $member{'regrealname'} =~
+          /[^ \w\x80-\xFF\[\]\(\)#\%\+,\-\|\.:=\?\@\^]/;
 
-      if ($regcheck) {
-            require "$sourcedir/Decoder.pl";
-            &validation_check($FORM{'verification'});
-      }
+    if ($regcheck) {
+        require "$sourcedir/Decoder.pl";
+        &validation_check( $FORM{'verification'} );
+    }
 
-      if ($emailpassword) {
-            srand();
-            $member{'passwrd1'} = int(rand(100));
-            $member{'passwrd1'} =~ tr/0123456789/ymifxupbck/;
-            $_ = int(rand(77));
-            $_ =~ tr/0123456789/q8dv7w4jm3/;
-            $member{'passwrd1'} .= $_;
-            $_ = int(rand(89));
-            $_ =~ tr/0123456789/y6uivpkcxw/;
-            $member{'passwrd1'} .= $_;
-            $_ = int(rand(188));
-            $_ =~ tr/0123456789/poiuytrewq/;
-            $member{'passwrd1'} .= $_;
-            $_ = int(rand(65));
-            $_ =~ tr/0123456789/lkjhgfdaut/;
-            $member{'passwrd1'} .= $_;
+    if ($emailpassword) {
+        srand();
+        $member{'passwrd1'} = int( rand(100) );
+        $member{'passwrd1'} =~ tr/0123456789/ymifxupbck/;
+        $_ = int( rand(77) );
+        $_ =~ tr/0123456789/q8dv7w4jm3/;
+        $member{'passwrd1'} .= $_;
+        $_ = int( rand(89) );
+        $_ =~ tr/0123456789/y6uivpkcxw/;
+        $member{'passwrd1'} .= $_;
+        $_ = int( rand(188) );
+        $_ =~ tr/0123456789/poiuytrewq/;
+        $member{'passwrd1'} .= $_;
+        $_ = int( rand(65) );
+        $_ =~ tr/0123456789/lkjhgfdaut/;
+        $member{'passwrd1'} .= $_;
 
-      } else {
-            &admin_fatal_error("password_mismatch","($member{'regusername'})") if ($member{'passwrd1'} ne $member{'passwrd2'});
-            &admin_fatal_error("no_password","($member{'regusername'})") if ($member{'passwrd1'} eq '');
-            &admin_fatal_error("invalid_character","$register_txt{'36'} $register_txt{'241'}") if ($member{'passwrd1'}  =~ /[^\s\w!\@#\$\%\^&\*\(\)\+\|`~\-=\\:;'",\.\/\?\[\]\{\}]/);
-      }
+    }
+    else {
+        &admin_fatal_error( "password_mismatch", "($member{'regusername'})" )
+          if ( $member{'passwrd1'} ne $member{'passwrd2'} );
+        &admin_fatal_error( "no_password", "($member{'regusername'})" )
+          if ( $member{'passwrd1'} eq '' );
+        &admin_fatal_error( "invalid_character",
+            "$register_txt{'36'} $register_txt{'241'}" )
+          if ( $member{'passwrd1'} =~
+            /[^\s\w!\@#\$\%\^&\*\(\)\+\|`~\-=\\:;'",\.\/\?\[\]\{\}]/ );
+    }
 
-      &admin_fatal_error("invalid_character","$register_txt{'69'} $register_txt{'241e'}") if ($member{'email'} !~ /^[\w\-\.\+]+\@[\w\-\.\+]+\.\w{2,4}$/);
-      &admin_fatal_error("invalid_email") if (($member{'email'} =~ /(@.*@)|(\.\.)|(@\.)|(\.@)|(^\.)|(\.$)/) || ($member{'email'} !~ /\A.+@\[?(\w|[-.])+\.[a-zA-Z]{2,4}|[0-9]{1,4}\]?\Z/));
+    &admin_fatal_error( "invalid_character",
+        "$register_txt{'69'} $register_txt{'241e'}" )
+      if ( $member{'email'} !~ /^[\w\-\.\+]+\@[\w\-\.\+]+\.\w{2,4}$/ );
+    &admin_fatal_error("invalid_email")
+      if (
+        ( $member{'email'} =~ /(@.*@)|(\.\.)|(@\.)|(\.@)|(^\.)|(\.$)/ )
+        || ( $member{'email'} !~
+            /\A.+@\[?(\w|[-.])+\.[a-zA-Z]{2,4}|[0-9]{1,4}\]?\Z/ )
+      );
 
-      if (lc $member{'regusername'} eq lc &MemberIndex("check_exist", $member{'regusername'})) { &admin_fatal_error("id_taken","($member{'regusername'})"); }
-      if (lc $member{'email'} eq lc &MemberIndex("check_exist", $member{'email'})) { &admin_fatal_error("email_taken","($member{'email'})"); }
-      if (lc $member{'regrealname'} eq lc &MemberIndex("check_exist", $member{'regrealname'})) { &admin_fatal_error("name_taken","($member{'regrealname'})"); }
+    if (
+        lc $member{'regusername'} eq
+        lc &MemberIndex( "check_exist", $member{'regusername'} ) )
+    {
+        &admin_fatal_error( "id_taken", "($member{'regusername'})" );
+    }
+    if (
+        lc $member{'email'} eq
+        lc &MemberIndex( "check_exist", $member{'email'} ) )
+    {
+        &admin_fatal_error( "email_taken", "($member{'email'})" );
+    }
+    if (
+        lc $member{'regrealname'} eq
+        lc &MemberIndex( "check_exist", $member{'regrealname'} ) )
+    {
+        &admin_fatal_error( "name_taken", "($member{'regrealname'})" );
+    }
 
-      if ($name_cannot_be_userid && lc $member{'regusername'} eq lc $member{'regrealname'}) { &admin_fatal_error("name_is_userid"); }
+    if ( $name_cannot_be_userid
+        && lc $member{'regusername'} eq lc $member{'regrealname'} )
+    {
+        &admin_fatal_error("name_is_userid");
+    }
 
-      fopen(RESERVE, "$vardir/reserve.txt") || &admin_fatal_error("cannot_open","$vardir/reserve.txt", 1);
-      @reserve = <RESERVE>;
-      fclose(RESERVE);
-      fopen(RESERVECFG, "$vardir/reservecfg.txt") || &admin_fatal_error("cannot_open","$vardir/reservecfg.txt", 1);
-      @reservecfg = <RESERVECFG>;
-      fclose(RESERVECFG);
-      for ($a = 0; $a < @reservecfg; $a++) {
-            chomp $reservecfg[$a];
-      }
-      $matchword = $reservecfg[0] eq 'checked';
-      $matchcase = $reservecfg[1] eq 'checked';
-      $matchuser = $reservecfg[2] eq 'checked';
-      $matchname = $reservecfg[3] eq 'checked';
-      $namecheck = $matchcase eq 'checked' ? $member{'regusername'} : lc $member{'regusername'};
-      $realnamecheck = $matchcase eq 'checked' ? $member{'regrealname'} : lc $member{'regrealname'};
+    fopen( RESERVE, "$vardir/reserve.txt" )
+      || &admin_fatal_error( "cannot_open", "$vardir/reserve.txt", 1 );
+    @reserve = <RESERVE>;
+    fclose(RESERVE);
+    fopen( RESERVECFG, "$vardir/reservecfg.txt" )
+      || &admin_fatal_error( "cannot_open", "$vardir/reservecfg.txt", 1 );
+    @reservecfg = <RESERVECFG>;
+    fclose(RESERVECFG);
+    for ( $a = 0 ; $a < @reservecfg ; $a++ ) {
+        chomp $reservecfg[$a];
+    }
+    $matchword = $reservecfg[0] eq 'checked';
+    $matchcase = $reservecfg[1] eq 'checked';
+    $matchuser = $reservecfg[2] eq 'checked';
+    $matchname = $reservecfg[3] eq 'checked';
+    $namecheck =
+        $matchcase eq 'checked'
+      ? $member{'regusername'}
+      : lc $member{'regusername'};
+    $realnamecheck =
+        $matchcase eq 'checked'
+      ? $member{'regrealname'}
+      : lc $member{'regrealname'};
 
-      foreach $reserved (@reserve) {
-            chomp $reserved;
-            $reservecheck = $matchcase ? $reserved : lc $reserved;
-            if ($matchuser) {
-                  if ($matchword) {
-                        if ($namecheck eq $reservecheck) { &admin_fatal_error('id_reserved',"$reserved"); }
-                  } else {
-                        if ($namecheck =~ $reservecheck) { &admin_fatal_error('id_reserved',"$reserved"); }
-                  }
+    foreach $reserved (@reserve) {
+        chomp $reserved;
+        $reservecheck = $matchcase ? $reserved : lc $reserved;
+        if ($matchuser) {
+            if ($matchword) {
+                if ( $namecheck eq $reservecheck ) {
+                    &admin_fatal_error( 'id_reserved', "$reserved" );
+                }
             }
-            if ($matchname) {
-                  if ($matchword) {
-                        if ($realnamecheck eq $reservecheck) { &admin_fatal_error('name_reserved',"$reserved"); }
-                  } else {
-                        if ($realnamecheck =~ $reservecheck) { &admin_fatal_error('name_reserved',"$reserved"); }
-                  }
+            else {
+                if ( $namecheck =~ $reservecheck ) {
+                    &admin_fatal_error( 'id_reserved', "$reserved" );
+                }
             }
-      }
+        }
+        if ($matchname) {
+            if ($matchword) {
+                if ( $realnamecheck eq $reservecheck ) {
+                    &admin_fatal_error( 'name_reserved', "$reserved" );
+                }
+            }
+            else {
+                if ( $realnamecheck =~ $reservecheck ) {
+                    &admin_fatal_error( 'name_reserved', "$reserved" );
+                }
+            }
+        }
+    }
 
-      &admin_fatal_error("id_taken") if (-e ("$memberdir/$member{'username'}.vars"));
+    &admin_fatal_error("id_taken")
+      if ( -e ("$memberdir/$member{'username'}.vars") );
 
-      if ($send_welcomeim == 1) {
-            # new format msg file:
-            # messageid|(from)user|(touser(s))|(ccuser(s))|(bccuser(s))|subject|date|message|(parentmid)|reply#|ip|messagestatus|flags|storefolder|attachment
-            $messageid = $^T . $$;
-            fopen(IM, ">$memberdir/$member{'regusername'}.msg", 1);
-            print IM "$messageid|$sendname|$member{'regusername'}|||$imsubject|$date|$imtext|$messageid|0|$ENV{'REMOTE_ADDR'}|s|u||\n";
-            fclose(IM);
-      }
-      $encryptopass = &encode_password($member{'passwrd1'});
-      $reguser      = $member{'regusername'};
-      $registerdate = timetostring($date);
+    if ( $send_welcomeim == 1 ) {
 
-      if ($default_template) { $new_template = $default_template; }
-      else { $new_template = "default"; }
+# new format msg file:
+# messageid|(from)user|(touser(s))|(ccuser(s))|(bccuser(s))|subject|date|message|(parentmid)|reply#|ip|messagestatus|flags|storefolder|attachment
+        $messageid = $^T . $$;
+        fopen( IM, ">$memberdir/$member{'regusername'}.msg", 1 );
+        print IM
+"$messageid|$sendname|$member{'regusername'}|||$imsubject|$date|$imtext|$messageid|0|$ENV{'REMOTE_ADDR'}|s|u||\n";
+        fclose(IM);
+    }
+    $encryptopass = &encode_password( $member{'passwrd1'} );
+    $reguser      = $member{'regusername'};
+    $registerdate = timetostring($date);
 
-      &ToHTML($member{'regrealname'});
+    if   ($default_template) { $new_template = $default_template; }
+    else                     { $new_template = "default"; }
 
-      ${$uid.$reguser}{'password'}      = $encryptopass;
-      ${$uid.$reguser}{'realname'}      = $member{'regrealname'};
-      ${$uid.$reguser}{'email'}         = lc($member{'email'});
-      ${$uid.$reguser}{'postcount'}     = 0;
-      ${$uid.$reguser}{'usertext'}      = $defaultusertxt;
-      ${$uid.$reguser}{'userpic'}       = "blank.gif";
-      ${$uid.$reguser}{'regdate'}       = $registerdate;
-      ${$uid.$reguser}{'regtime'}       = $date;
-      ${$uid.$reguser}{'timeselect'}    = $timeselected;
-      ${$uid.$reguser}{'timeoffset'}    = $timeoffset;
-      ${$uid.$reguser}{'dsttimeoffset'} = $dstoffset;
-      ${$uid.$reguser}{'hidemail'}      = $FORM{'hideemail'} ? 1 : 0;
-      ${$uid.$reguser}{'timeformat'}    = qq~MM D+ YYYY @ HH:mm:ss*~;
-      ${$uid.$reguser}{'template'}      = $new_template;
-      ${$uid.$reguser}{'language'}      = $member{'userlang'};
-      ${$uid.$reguser}{'pageindex'}     = qq~1|1|1~;
+    &ToHTML( $member{'regrealname'} );
 
-      &UserAccount($reguser, "register") & MemberIndex("add", $reguser) & FormatUserName($reguser);
+    ${ $uid . $reguser }{'password'}      = $encryptopass;
+    ${ $uid . $reguser }{'realname'}      = $member{'regrealname'};
+    ${ $uid . $reguser }{'email'}         = lc( $member{'email'} );
+    ${ $uid . $reguser }{'postcount'}     = 0;
+    ${ $uid . $reguser }{'usertext'}      = $defaultusertxt;
+    ${ $uid . $reguser }{'userpic'}       = "blank.gif";
+    ${ $uid . $reguser }{'regdate'}       = $registerdate;
+    ${ $uid . $reguser }{'regtime'}       = $date;
+    ${ $uid . $reguser }{'timeselect'}    = $timeselected;
+    ${ $uid . $reguser }{'timeoffset'}    = $timeoffset;
+    ${ $uid . $reguser }{'dsttimeoffset'} = $dstoffset;
+    ${ $uid . $reguser }{'hidemail'}      = $FORM{'hideemail'} ? 1 : 0;
+    ${ $uid . $reguser }{'timeformat'}    = qq~MM D+ YYYY @ HH:mm:ss*~;
+    ${ $uid . $reguser }{'template'}      = $new_template;
+    ${ $uid . $reguser }{'language'}      = $member{'userlang'};
+    ${ $uid . $reguser }{'pageindex'}     = qq~1|1|1~;
 
-      if ($emailpassword) {
-            my $templanguage = $language;
-            $language = $member{'userlang'};
-            &LoadLanguage('Email');
-            require "$sourcedir/Mailer.pl";
-            my $message = &template_email($passwordregemail, {'displayname' => $member{'regrealname'}, 'username' => $reguser, 'password' => $member{'passwrd1'}});
-            &sendmail($member{'email'}, "$mailreg_txt{'apr_result_info'} $mbname", $message,'',$emailcharset);
-            $language = $templanguage;
+    &UserAccount( $reguser, "register" ) & MemberIndex( "add", $reguser ) &
+      FormatUserName($reguser);
 
-      } elsif ($emailwelcome) {
-            my $templanguage = $language;
-            $language = $member{'userlang'};
-            &LoadLanguage('Email');
-            require "$sourcedir/Mailer.pl";
-            my $message = &template_email($welcomeregemail, {'displayname' => $member{'regrealname'}, 'username' => $reguser, 'password' => $member{'passwrd1'}});
-            &sendmail($member{'email'}, "$mailreg_txt{'apr_result_info'} $mbname", $message,'',$emailcharset);
-            $language = $templanguage;
-      }
+    if ($emailpassword) {
+        my $templanguage = $language;
+        $language = $member{'userlang'};
+        &LoadLanguage('Email');
+        require "$sourcedir/Mailer.pl";
+        my $message = &template_email(
+            $passwordregemail,
+            {
+                'displayname' => $member{'regrealname'},
+                'username'    => $reguser,
+                'password'    => $member{'passwrd1'}
+            }
+        );
+        &sendmail( $member{'email'}, "$mailreg_txt{'apr_result_info'} $mbname",
+            $message, '', $emailcharset );
+        $language = $templanguage;
 
-      $yytitle       = "$register_txt{'245'}";
-      $yymain        = "$register_txt{'245'}";
-      $yySetLocation = qq~$adminurl?action=viewmembers;sort=regdate;reversed=on;start=0~;
-      &redirectexit;
-      $action_area = "addmember";
-      &AdminTemplate;
+    }
+    elsif ($emailwelcome) {
+        my $templanguage = $language;
+        $language = $member{'userlang'};
+        &LoadLanguage('Email');
+        require "$sourcedir/Mailer.pl";
+        my $message = &template_email(
+            $welcomeregemail,
+            {
+                'displayname' => $member{'regrealname'},
+                'username'    => $reguser,
+                'password'    => $member{'passwrd1'}
+            }
+        );
+        &sendmail( $member{'email'}, "$mailreg_txt{'apr_result_info'} $mbname",
+            $message, '', $emailcharset );
+        $language = $templanguage;
+    }
+
+    $yytitle = "$register_txt{'245'}";
+    $yymain  = "$register_txt{'245'}";
+    $yySetLocation =
+      qq~$adminurl?action=viewmembers;sort=regdate;reversed=on;start=0~;
+    &redirectexit;
+    $action_area = "addmember";
+    &AdminTemplate;
 }
 
 1;

@@ -1,5 +1,6 @@
 ###############################################################################
 # LogInOut.pl                                                                 #
+# $Date: 9/20/2012 $                                                          #
 ###############################################################################
 # YaBB: Yet another Bulletin Board                                            #
 # Open-Source Community Software for Webmasters                               #
@@ -11,9 +12,15 @@
 # Software by:  The YaBB Development Team                                     #
 #               with assistance from the YaBB community.                      #
 ###############################################################################
+# use strict;
+# use warnings;
+no warnings qw(uninitialized once redefine);
+use CGI::Carp qw(fatalsToBrowser);
+use English '-no_match_vars';
+our $VERSION = 1.0;
 
 $loginoutplver = 'YaBB 2.6 $Revision: 1.0 $';
-if ($action eq 'detailedversion') { return 1; }
+if ( $action eq 'detailedversion' ) { return 1; }
 
 if ($regcheck) { require "$sourcedir/Decoder.pl"; }
 &LoadLanguage('LogInOut');
@@ -21,156 +28,185 @@ if ($regcheck) { require "$sourcedir/Decoder.pl"; }
 $regstyle = '';
 
 sub Login {
-#     if (!$iamguest) { &fatal_error("logged_in_already",$username); }
-      if (!$iamguest && $sessionvalid == 1) { &fatal_error("logged_in_already",$username); }
-      $sharedLogin_title = $loginout_txt{'34'};
-      $yymain .= &sharedLogin . qq~<script type="text/javascript" language="JavaScript">
+    if ( !$iamguest && $sessionvalid == 1 ) {
+        &fatal_error( "logged_in_already", $username );
+    }
+    $sharedLogin_title = $loginout_txt{'34'};
+    $yymain .=
+      &sharedLogin . qq~<script type="text/javascript" language="JavaScript">
 <!--
       document.loginform.username.focus();
 //-->
 </script>~;
-      $yytitle = $loginout_txt{'34'};
-      &template;
+    $yytitle = $loginout_txt{'34'};
+    &template;
 }
 
 sub Login2 {
-#     if (!$iamguest) { &fatal_error("logged_in_already",$username); }
-      if (!$iamguest && $sessionvalid == 1) { &fatal_error("logged_in_already",$username); }
-      &fatal_error("no_username") if ($FORM{'username'} eq "");
-      &fatal_error("no_password") if ($FORM{'passwrd'}  eq "");
-      $username = $FORM{'username'};
-      $username =~ s/\s/_/g;
-      &fatal_error("invalid_character","$loginout_txt{'35'} $loginout_txt{'241'}") if $username =~ /[^ \w\x80-\xFF\[\]\(\)#\%\+,\-\|\.:=\?\@\^]/;
-      &fatal_error("only_numbers_allowed") if $FORM{'cookielength'} !~ /^[0-9]+$/;
+    if ( !$iamguest && $sessionvalid == 1 ) {
+        &fatal_error( "logged_in_already", $username );
+    }
+    &fatal_error("no_username") if ( $FORM{'username'} eq "" );
+    &fatal_error("no_password") if ( $FORM{'passwrd'}  eq "" );
+    $username = $FORM{'username'};
+    $username =~ s/\s/_/g;
+    &fatal_error( "invalid_character",
+        "$loginout_txt{'35'} $loginout_txt{'241'}" )
+      if $username =~ /[^ \w\x80-\xFF\[\]\(\)#\%\+,\-\|\.:=\?\@\^]/;
+    &fatal_error("only_numbers_allowed") if $FORM{'cookielength'} !~ /^[0-9]+$/;
 
-      ## Check if login ID is not and email address or screenname ##
-      if (!-e "$memberdir/$username.vars"){
-            $test_id = &MemberIndex("who_is", "$FORM{'username'}");
-            if ($test_id ne "") { $username = $test_id; } else { &fatal_error("bad_credentials"); }
-      }
-      if (-e "$memberdir/$username.pre" && -e "$memberdir/$username.vars") { unlink "$memberdir/$username.pre"; }
-      if (-e "$memberdir/$username.pre" && ($regtype == 1 || $regtype == 2)) { &fatal_error('not_activated'); }
+    ## Check if login ID is not and email address or screenname ##
+    if ( !-e "$memberdir/$username.vars" ) {
+        $test_id = &MemberIndex( "who_is", "$FORM{'username'}" );
+        if ( $test_id ne "" ) { $username = $test_id; }
+        else                  { &fatal_error("bad_credentials"); }
+    }
+    if ( -e "$memberdir/$username.pre" && -e "$memberdir/$username.vars" ) {
+        unlink "$memberdir/$username.pre";
+    }
+    if ( -e "$memberdir/$username.pre" && ( $regtype == 1 || $regtype == 2 ) ) {
+        &fatal_error('not_activated');
+    }
 
-      # Need to do this to get correct case of username,
-      # for case insensitive systems. Can cause weird issues otherwise
-      $caseright = 0;
-      &ManageMemberlist("load");
-      while (($curmemb, $value) = each(%memberlist)) {
-            if ($username =~ m/\A\Q$curmemb\E\Z/) { $caseright = 1; last; }
-      }
-      undef %memberlist;
-      if(!$caseright) {
+    # Need to do this to get correct case of username,
+    # for case insensitive systems. Can cause weird issues otherwise
+    $caseright = 0;
+    &ManageMemberlist("load");
+    while ( ( $curmemb, $value ) = each(%memberlist) ) {
+        if ( $username =~ m/\A\Q$curmemb\E\Z/ ) { $caseright = 1; last; }
+    }
+    undef %memberlist;
+    if ( !$caseright ) {
+        $username = "Guest";
+        &fatal_error("bad_credentials");
+    }
+
+    if ( -e "$memberdir/$username.vars" ) {
+        &LoadUser($username);
+        my $spass     = ${ $uid . $username }{'password'};
+        my $cryptpass = &encode_password("$FORM{'passwrd'}");
+
+        # convert non encrypted password to MD5 crypted one
+        if ( $spass eq $FORM{'passwrd'} && $spass ne $cryptpass ) {
+
+            # only encrypt the password if it's not already MD5 encrypted
+            # MD5 hashes in YaBB are always 22 chars long (base64)
+            if ( length( ${ $uid . $username }{'password'} ) != 22 ) {
+                ${ $uid . $username }{'password'} = $cryptpass;
+                &UserAccount($username);
+                $spass = $cryptpass;
+            }
+        }
+        if ( $spass ne $cryptpass ) {
             $username = "Guest";
             &fatal_error("bad_credentials");
-      }
+        }
+    }
+    else {
+        $username = "Guest";
+        &fatal_error("bad_credentials");
+    }
 
-      if (-e "$memberdir/$username.vars") {
-            &LoadUser($username);
-            my $spass     = ${$uid.$username}{'password'};
-            my $cryptpass = &encode_password("$FORM{'passwrd'}");
+    $iamadmin = ${ $uid . $username }{'position'} eq 'Administrator'    ? 1 : 0;
+    $iamgmod  = ${ $uid . $username }{'position'} eq 'Global Moderator' ? 1 : 0;
+    $sessionvalid = 1;
+    $iamguest     = 0;
 
-            # convert non encrypted password to MD5 crypted one
-            if ($spass eq $FORM{'passwrd'} && $spass ne $cryptpass) {
-                  # only encrypt the password if it's not already MD5 encrypted
-                  # MD5 hashes in YaBB are always 22 chars long (base64)
-                  if (length(${$uid.$username}{'password'}) != 22) {
-                        ${$uid.$username}{'password'} = $cryptpass;
-                        &UserAccount($username);
-                        $spass = $cryptpass;
-                  }
-            }
-            if ($spass ne $cryptpass) {
-                  $username = "Guest";
-                  &fatal_error("bad_credentials");
-            }
-      } else {
-            $username = "Guest";
-            &fatal_error("bad_credentials");
-      }
+    if ( $maintenance && !$iamadmin ) {
+        $username = 'Guest';
+        &fatal_error("admin_login_only");
+    }
+    &banning;
 
-      $iamadmin     = ${$uid.$username}{'position'} eq 'Administrator' ? 1 : 0;
-      $iamgmod      = ${$uid.$username}{'position'} eq 'Global Moderator' ? 1 : 0;
-      $sessionvalid = 1;
-      $iamguest = 0;
+    if ( $FORM{'cookielength'} == 1 ) {
+        $ck{'len'} = 'Sunday, 17-Jan-2038 00:00:00 GMT';
+    }
+    elsif ( $FORM{'cookielength'} == 2 ) { $ck{'len'} = ''; }
+    else { $ck{'len'} = "+$FORM{'cookielength'}m"; }
+    ${ $uid . $username }{'session'} = &encode_password($user_ip);
+    &UpdateCookie(
+        "write", $username,
+        &encode_password( $FORM{'passwrd'} ),
+        ${ $uid . $username }{'session'},
+        "/", $ck{'len'}
+    );
 
-      if ($maintenance && !$iamadmin) { $username = 'Guest'; &fatal_error("admin_login_only"); }
-      &banning;
+    &UserAccount( $username, "update", "-" )
+      ;    # "-" to not update 'lastonline' here
+    &buildIMS( $username, 'load' );    # isn't loaded because was Guest before
+    &buildIMS( $username, '' )
+      ;    # rebuild the Members/$username.ims file on login
 
-      if ($FORM{'cookielength'} == 1) { $ck{'len'} = 'Sunday, 17-Jan-2038 00:00:00 GMT'; }
-      elsif ($FORM{'cookielength'} == 2) { $ck{'len'} = ''; }
-      else { $ck{'len'} = "+$FORM{'cookielength'}m"; }
-      ${$uid.$username}{'session'} = &encode_password($user_ip);
-      &UpdateCookie("write", $username, &encode_password($FORM{'passwrd'}), ${$uid.$username}{'session'}, "/", $ck{'len'});
-
-      &UserAccount($username, "update", "-"); # "-" to not update 'lastonline' here
-      &buildIMS($username,'load'); # isn't loaded because was Guest before
-      &buildIMS($username,''); # rebuild the Members/$username.ims file on login
-
-      if($FORM{'sredir'}) {
-            $FORM{'sredir'} =~ s/\~/\=/g;
-            $FORM{'sredir'} =~ s/x3B/;/g;
-            $FORM{'sredir'} =~ s/search2/search/g;
-            $FORM{'sredir'} = qq~?$FORM{'sredir'}~;
-#           $FORM{'sredir'} = '' if $FORM{'sredir'} =~ /action=(register|login2)/;
-            $FORM{'sredir'} = '' if $FORM{'sredir'} =~ /action=(register|login2|reminder|reminder2)/;
-      }
-      $yySetLocation = qq~$scripturl$FORM{'sredir'}~;
-      &redirectexit;
+    if ( $FORM{'sredir'} ) {
+        $FORM{'sredir'} =~ s/\~/\=/g;
+        $FORM{'sredir'} =~ s/x3B/;/g;
+        $FORM{'sredir'} =~ s/search2/search/g;
+        $FORM{'sredir'} = qq~?$FORM{'sredir'}~;
+        $FORM{'sredir'} = ''
+          if $FORM{'sredir'} =~ /action=(register|login2|reminder|reminder2)/;
+    }
+    $yySetLocation = qq~$scripturl$FORM{'sredir'}~;
+    &redirectexit;
 }
 
 sub Logout {
-      if ($username ne 'Guest') {
-            &RemoveUserOnline($username); # Remove user from online log
-            &UserAccount($username, "update", "lastonline");
-      }
+    if ( $username ne 'Guest' ) {
+        &RemoveUserOnline($username);    # Remove user from online log
+        &UserAccount( $username, "update", "lastonline" );
+    }
 
-      &UpdateCookie("delete");
-      $yySetLocation = $guestaccess ? $scripturl : qq~$scripturl?action=login~;
-      $username = 'Guest';
-      &redirectexit;
+    &UpdateCookie("delete");
+    $yySetLocation = $guestaccess ? $scripturl : qq~$scripturl?action=login~;
+    $username = 'Guest';
+    &redirectexit;
 }
 
 sub sharedLogin {
-      if ($action eq 'login' || $maintenance) {
-            $yynavigation = qq~&rsaquo; $loginout_txt{'34'}~;
-            $border = qq~<div class="bordercolor" style="width: 100%; margin-bottom: 8px; margin-left: auto; margin-right: auto;">~;
-            $border_with_title = qq~<div class="bordercolor" style="width: 700px; margin-bottom: 8px; margin-left: auto; margin-right: auto;">~;
-            $border_bottom = qq~</div>~;
-      }
+    if ( $action eq 'login' || $maintenance ) {
+        $yynavigation = qq~&rsaquo; $loginout_txt{'34'}~;
+        $border =
+qq~<div class="bordercolor" style="width: 100%; margin-bottom: 8px; margin-left: auto; margin-right: auto;">~;
+        $border_with_title =
+qq~<div class="bordercolor" style="width: 700px; margin-bottom: 8px; margin-left: auto; margin-right: auto;">~;
+        $border_bottom = qq~</div>~;
+    }
 
-      if    ($Cookie_Length == 1)    { $clsel1    = ' selected="selected"'; }
-      elsif ($Cookie_Length == 2)    { $clsel2    = ' selected="selected"'; }
-      elsif ($Cookie_Length == 60)   { $clsel60   = ' selected="selected"'; }
-      elsif ($Cookie_Length == 180)  { $clsel180  = ' selected="selected"'; }
-      elsif ($Cookie_Length == 360)  { $clsel360  = ' selected="selected"'; }
-      elsif ($Cookie_Length == 480)  { $clsel480  = ' selected="selected"'; }
-      elsif ($Cookie_Length == 600)  { $clsel600  = ' selected="selected"'; }
-      elsif ($Cookie_Length == 720)  { $clsel720  = ' selected="selected"'; }
-      elsif ($Cookie_Length == 1440) { $clsel1440 = ' selected="selected"'; }
-      if ($sharedLogin_title ne "") {
-            $sharedlog .= qq~
+    if    ( $Cookie_Length == 1 )    { $clsel1    = ' selected="selected"'; }
+    elsif ( $Cookie_Length == 2 )    { $clsel2    = ' selected="selected"'; }
+    elsif ( $Cookie_Length == 60 )   { $clsel60   = ' selected="selected"'; }
+    elsif ( $Cookie_Length == 180 )  { $clsel180  = ' selected="selected"'; }
+    elsif ( $Cookie_Length == 360 )  { $clsel360  = ' selected="selected"'; }
+    elsif ( $Cookie_Length == 480 )  { $clsel480  = ' selected="selected"'; }
+    elsif ( $Cookie_Length == 600 )  { $clsel600  = ' selected="selected"'; }
+    elsif ( $Cookie_Length == 720 )  { $clsel720  = ' selected="selected"'; }
+    elsif ( $Cookie_Length == 1440 ) { $clsel1440 = ' selected="selected"'; }
+    if ( $sharedLogin_title ne "" ) {
+        $sharedlog .= qq~
 $border_with_title
 <table cellpadding="4" cellspacing="1" border="0" width="100%" align="center">
       <tr><td class="titlebg" colspan="2"><b>$sharedLogin_title</b></td></tr>~;
-            if ($sharedLogin_text ne "") {
-                  $sharedlog .= qq~
-      <tr><td class="windowbg" colspan="2" align="left">$sharedLogin_text</td></tr>~;
-            }
+        if ( $sharedLogin_text ne "" ) {
             $sharedlog .= qq~
+      <tr><td class="windowbg" colspan="2" align="left">$sharedLogin_text</td></tr>~;
+        }
+        $sharedlog .= qq~
       <tr>
             <td class="windowbg2" colspan="2" align="center" valign="middle" style="padding: 10px;">~;
-      } else {
-            $sharedlog .= qq~
+    }
+    else {
+        $sharedlog .= qq~
 $border
 <table class="bordercolor" align="center" cellpadding="0" cellspacing="1" border="0" width="100%">
       <tr><td class="tabtitle" colspan="2" valign="middle" align="center" height="25">$loginout_txt{'34'}</td></tr>
       <tr>
             <td class="windowbg" width="5%" valign="middle" align="center"><img src="$imagesdir/login.gif" border="0" alt="" /></td>
             <td class="windowbg2" align="center" valign="middle" style="padding: 10px;">~;
-      }
+    }
     if ($maintenance) { $hide_passbutton = " visibility: hidden;"; }
-    if ($maintenance || !$regtype) { $hide_regbutton = " visibility: hidden;"; }
-      $sharedlog .= qq~
+    if ( $maintenance || !$regtype ) {
+        $hide_regbutton = " visibility: hidden;";
+    }
+    $sharedlog .= qq~
                   <form name="loginform" action="$scripturl?action=login2" method="post">
                         <input type="hidden" name="sredir" value="$INFO{'sesredir'}" />
                         <div style="width: 600px;">
@@ -224,16 +260,17 @@ $border
 $border_bottom
 ~;
 
-      $loginform = 1;
-      $sharedLogin_title = '';
-      $sharedLogin_text = '';
-      return $sharedlog;
+    $loginform         = 1;
+    $sharedLogin_title = '';
+    $sharedLogin_text  = '';
+    return $sharedlog;
 }
 
 sub Reminder {
-#     if (!$iamguest) { &fatal_error("logged_in_already",$username); }
-      if (!$iamguest && $sessionvalid == 1) { &fatal_error("logged_in_already",$username); }
-      $yymain .= qq~<br /><br />
+    if ( !$iamguest && $sessionvalid == 1 ) {
+        &fatal_error( "logged_in_already", $username );
+    }
+    $yymain .= qq~<br /><br />
 <form action="$scripturl?action=reminder2" method="post" name="reminder" onsubmit="return CheckReminderField();">
 <table border="0" width="400" cellspacing="1" cellpadding="3" align="center" class="bordercolor">
       <tr>
@@ -248,9 +285,9 @@ sub Reminder {
       </tr>
 ~;
 
-      if ($regcheck) {
-            &validation_code;
-            $yymain .= qq~
+    if ($regcheck) {
+        &validation_code;
+        $yymain .= qq~
       <tr>
       <td class="windowbg">
       <label for="verification"><span class="text1"><b>$floodtxt{'1'}: </b></span>
@@ -264,8 +301,8 @@ sub Reminder {
       </td>
       </tr>
 ~;
-      }
-      $yymain .= qq~
+    }
+    $yymain .= qq~
       <tr>
       <td align="center" class="windowbg">
       <input type="submit" value="$loginout_txt{'339'}" class="button" />
@@ -289,64 +326,77 @@ sub Reminder {
 </script> <br /><br />
 ~;
 
-      $yytitle = $loginout_txt{'669'};
-      $yynavigation = qq~&rsaquo; $loginout_txt{'669'}~;
-      &template;
+    $yytitle      = $loginout_txt{'669'};
+    $yynavigation = qq~&rsaquo; $loginout_txt{'669'}~;
+    &template;
 }
 
 sub Reminder2 {
-      if (!$FORM{'user'}) { &fatal_error("", "$loginout_txt{'error_user_info'}"); }
-      # generate random ID for password reset.
-#     if (!$iamguest) { &fatal_error("logged_in_already",$username); }
-      if (!$iamguest && $sessionvalid == 1) { &fatal_error("logged_in_already",$username); }
-      my $randid = &keygen(8,"A");
+    if ( !$FORM{'user'} ) {
+        &fatal_error( "", "$loginout_txt{'error_user_info'}" );
+    }
 
-      if ($regcheck) {
-            &validation_check($FORM{'verification'});
-      }
+    # generate random ID for password reset.
+    if ( !$iamguest && $sessionvalid == 1 ) {
+        &fatal_error( "logged_in_already", $username );
+    }
+    my $randid = &keygen( 8, "A" );
 
-      my $user = $FORM{'user'};
-      $user =~ s/\s/_/g;
+    if ($regcheck) {
+        &validation_check( $FORM{'verification'} );
+    }
 
-      if (!-e "$memberdir/$user.vars"){
-            $test_id = &MemberIndex("who_is", $user);
-            if ($test_id) { $user = $test_id; }
-            else { &fatal_error("", "$loginout_txt{'no_user_info_exists'}"); }
-      }
+    my $user = $FORM{'user'};
+    $user =~ s/\s/_/g;
 
-      # Fix to make it load in their own language
-      &LoadUser($user);
-      &fatal_error("corrupt_member_file") if !${$uid.$user}{'email'};
+    if ( !-e "$memberdir/$user.vars" ) {
+        $test_id = &MemberIndex( "who_is", $user );
+        if ($test_id) { $user = $test_id; }
+        else { &fatal_error( "", "$loginout_txt{'no_user_info_exists'}" ); }
+    }
 
-      $username = $user;
-      &WhatLanguage;
-      &LoadLanguage('LogInOut');
-      &LoadLanguage('Email');
-      undef $username;
+    # Fix to make it load in their own language
+    &LoadUser($user);
+    &fatal_error("corrupt_member_file") if !${ $uid . $user }{'email'};
 
-      $userfound = 0;
+    $username = $user;
+    &WhatLanguage;
+    &LoadLanguage('LogInOut');
+    &LoadLanguage('Email');
+    undef $username;
 
-      if (-e "$memberdir/forgotten.passes") {
-            require "$memberdir/forgotten.passes";
-      }
-      if (exists $pass{$user}) { delete $pass{$user}; }
-      $pass{"$user"} = $randid;
+    $userfound = 0;
 
-      fopen(FILE, ">$memberdir/forgotten.passes") || &fatal_error("cannot_open","$memberdir/forgotten.passes", 1);
-      while (($key, $value) = each(%pass)) {
-            print FILE qq~\$pass{"$key"} = '$value';\n~;
-      }
-      print FILE "1;";
-      fclose(FILE);
+    if ( -e "$memberdir/forgotten.passes" ) {
+        require "$memberdir/forgotten.passes";
+    }
+    if ( exists $pass{$user} ) { delete $pass{$user}; }
+    $pass{"$user"} = $randid;
 
-      $subject = "$loginout_txt{'36'} $mbname: ${$uid.$user}{'realname'}";
-      if($do_scramble_id){$cryptusername = &cloak($user);} else {$cryptusername = $user; }
-      require "$sourcedir/Mailer.pl";
-      &LoadLanguage('Email');
-      my $message = &template_email($passwordreminderemail, {'displayname' => ${$uid.$user}{'realname'}, 'cryptusername' => $cryptusername, 'remindercode' => $randid});
-      &sendmail(${$uid.$user}{'email'}, $subject, $message);
+    fopen( FILE, ">$memberdir/forgotten.passes" )
+      || &fatal_error( "cannot_open", "$memberdir/forgotten.passes", 1 );
+    while ( ( $key, $value ) = each(%pass) ) {
+        print FILE qq~\$pass{"$key"} = '$value';\n~;
+    }
+    print FILE "1;";
+    fclose(FILE);
 
-      $yymain .= qq~<br /><br />
+    $subject = "$loginout_txt{'36'} $mbname: ${$uid.$user}{'realname'}";
+    if   ($do_scramble_id) { $cryptusername = &cloak($user); }
+    else                   { $cryptusername = $user; }
+    require "$sourcedir/Mailer.pl";
+    &LoadLanguage('Email');
+    my $message = &template_email(
+        $passwordreminderemail,
+        {
+            'displayname'   => ${ $uid . $user }{'realname'},
+            'cryptusername' => $cryptusername,
+            'remindercode'  => $randid
+        }
+    );
+    &sendmail( ${ $uid . $user }{'email'}, $subject, $message );
+
+    $yymain .= qq~<br /><br />
 <table border="0" width="400" cellspacing="1" cellpadding="3" align="center" class="bordercolor">
       <tr>
       <td class="titlebg">
@@ -360,56 +410,64 @@ sub Reminder2 {
 <br /><p align="center"><a href="$scripturl">$maintxt{'go_to_board'}</a></p><br />
 
 ~;
-      $yytitle = "$loginout_txt{'669'}";
-      &template;
+    $yytitle = "$loginout_txt{'669'}";
+    &template;
 }
 
 sub Reminder3 {
-      $id   = $INFO{'ID'};
-      if($do_scramble_id){$user = &decloak($INFO{'user'});} else { $user = $INFO{'user'};}
+    $id = $INFO{'ID'};
+    if   ($do_scramble_id) { $user = &decloak( $INFO{'user'} ); }
+    else                   { $user = $INFO{'user'}; }
 
-      if ($id !~ /[a-zA-Z0-9]+/) { &fatal_error("invalid_character","ID $loginout_txt{'241'}"); }
-      if ($user =~ /[^\w#\%\+\-\.\@\^]/) { &fatal_error("invalid_character","User $loginout_txt{'241'}"); }
+    if ( $id !~ /[a-zA-Z0-9]+/ ) {
+        &fatal_error( "invalid_character", "ID $loginout_txt{'241'}" );
+    }
+    if ( $user =~ /[^\w#\%\+\-\.\@\^]/ ) {
+        &fatal_error( "invalid_character", "User $loginout_txt{'241'}" );
+    }
 
-      # generate a new random password as the old one is one-way encrypted.
-      @chararray = qw(0 1 2 3 4 5 6 7 8 9 a b c d e f g h i j k l m n o p q r s t u v w x y z A B C D E F G H I J K L M N O P Q R S T U V W X Y Z);
-      my $newpassword;
-      for (my $i; $i < 8; $i++) {
-            $newpassword .= $chararray[int(rand(61))];
-      }
+    # generate a new random password as the old one is one-way encrypted.
+    @chararray =
+      qw(0 1 2 3 4 5 6 7 8 9 a b c d e f g h i j k l m n o p q r s t u v w x y z A B C D E F G H I J K L M N O P Q R S T U V W X Y Z);
+    my $newpassword;
+    for ( my $i ; $i < 8 ; $i++ ) {
+        $newpassword .= $chararray[ int( rand(61) ) ];
+    }
 
-      # load old userdata
-      &LoadUser($user);
+    # load old userdata
+    &LoadUser($user);
 
-      # update forgotten passwords database
-      require "$memberdir/forgotten.passes";
-      if ($pass{$user} ne $id) { &fatal_error("wrong_id"); }
-      delete $pass{$user};
-      fopen(FORGOTTEN, ">$memberdir/forgotten.passes") || &fatal_error("cannot_open","$memberdir/forgotten.passes", 1);
-      while (($key, $value) = each(%pass)) {
-            print FORGOTTEN qq~\$pass{"$key"} = '$value';\n~;
-      }
-      print FORGOTTEN "\n1;";
-      fclose(FORGOTTEN);
+    # update forgotten passwords database
+    require "$memberdir/forgotten.passes";
+    if ( $pass{$user} ne $id ) { &fatal_error("wrong_id"); }
+    delete $pass{$user};
+    fopen( FORGOTTEN, ">$memberdir/forgotten.passes" )
+      || &fatal_error( "cannot_open", "$memberdir/forgotten.passes", 1 );
+    while ( ( $key, $value ) = each(%pass) ) {
+        print FORGOTTEN qq~\$pass{"$key"} = '$value';\n~;
+    }
+    print FORGOTTEN "\n1;";
+    fclose(FORGOTTEN);
 
-      # add newly generated password to user data
-      ${$uid.$user}{'password'} = &encode_password($newpassword);
-      &UserAccount($user, "update");
+    # add newly generated password to user data
+    ${ $uid . $user }{'password'} = &encode_password($newpassword);
+    &UserAccount( $user, "update" );
 
-      $FORM{'username'} = $user;
-      $FORM{'passwrd'} = $newpassword;
-      $FORM{'cookielength'} = 10;
-      $FORM{'sredir'} = qq*action~profileCheck2;redir~myprofile;username~$INFO{'user'};passwrd~$newpassword;newpassword~1*;
-      &Login2;
+    $FORM{'username'}     = $user;
+    $FORM{'passwrd'}      = $newpassword;
+    $FORM{'cookielength'} = 10;
+    $FORM{'sredir'} =
+qq*action~profileCheck2;redir~myprofile;username~$INFO{'user'};passwrd~$newpassword;newpassword~1*;
+    &Login2;
 }
 
 sub InMaintenance {
-      if ($maintenancetext ne "") { $maintxt{'157'} = $maintenancetext; }
-      $sharedLogin_title = "$maintxt{'114'}";
-      $sharedLogin_text  = "<b>$maintxt{'156'}</b><br />$maintxt{'157'}";
-      $yymain .= &sharedLogin;
-      $yytitle = "$maintxt{'155'}";
-      &template;
+    if ( $maintenancetext ne "" ) { $maintxt{'157'} = $maintenancetext; }
+    $sharedLogin_title = "$maintxt{'114'}";
+    $sharedLogin_text  = "<b>$maintxt{'156'}</b><br />$maintxt{'157'}";
+    $yymain .= &sharedLogin;
+    $yytitle = "$maintxt{'155'}";
+    &template;
 }
 
 1;

@@ -1,5 +1,6 @@
 ###############################################################################
 # SendTopic.pl                                                                #
+# $Date: 9/20/2012 $                                                          #
 ###############################################################################
 # YaBB: Yet another Bulletin Board                                            #
 # Open-Source Community Software for Webmasters                               #
@@ -11,32 +12,41 @@
 # Software by:  The YaBB Development Team                                     #
 #               with assistance from the YaBB community.                      #
 ###############################################################################
+# use strict;
+# use warnings;
+no warnings qw(uninitialized once redefine);
+use CGI::Carp qw(fatalsToBrowser);
+use English '-no_match_vars';
+our $VERSION = 1.0;
 
 $sendtopicplver = 'YaBB 2.6 $Revision: 1.0 $';
-if ($action eq 'detailedversion') { return 1; }
+if ( $action eq 'detailedversion' ) { return 1; }
 
-if (!$sendtopicmail || $sendtopicmail == 2) { &fatal_error("not_allowed"); }
+if ( !$sendtopicmail || $sendtopicmail == 2 ) { &fatal_error("not_allowed"); }
 
 if ($regcheck) { require "$sourcedir/Decoder.pl"; }
 
 &LoadLanguage('SendTopic');
 
 sub SendTopic {
-	$topic = $INFO{'topic'};
-	&MessageTotals("load", $topic);
-	$board = ${$topic}{'board'};
-	&fatal_error("no_board_send") unless ($board ne '' && $board ne '_' && $board ne ' ');
-	&fatal_error("no_topic_send") unless ($topic ne '' && $topic ne '_' && $topic ne ' ');
-	if ($iamguest) { $focus_y_name = qq~document.sendtopic.y_name.focus();~; }
+    $topic = $INFO{'topic'};
+    &MessageTotals( "load", $topic );
+    $board = ${$topic}{'board'};
+    &fatal_error("no_board_send")
+      unless ( $board ne '' && $board ne '_' && $board ne ' ' );
+    &fatal_error("no_topic_send")
+      unless ( $topic ne '' && $topic ne '_' && $topic ne ' ' );
+    if ($iamguest) { $focus_y_name = qq~document.sendtopic.y_name.focus();~; }
 
-	unless (ref($thread_arrayref{$topic})) {
-		fopen(FILE, "$datadir/$topic.txt") || &fatal_error("cannot_open","$datadir/$topic.txt", 1);
-		@{$thread_arrayref{$topic}} = <FILE>;
-		fclose(FILE);
-	}
-	$subject = (split(/\|/, ${$thread_arrayref{$topic}}[0], 2))[0];
+    unless ( ref( $thread_arrayref{$topic} ) ) {
+        fopen( FILE, "$datadir/$topic.txt" )
+          || &fatal_error( "cannot_open", "$datadir/$topic.txt", 1 );
+        @{ $thread_arrayref{$topic} } = <FILE>;
+        fclose(FILE);
+    }
+    $subject = ( split( /\|/, ${ $thread_arrayref{$topic} }[0], 2 ) )[0];
 
-	$yymain .= qq~
+    $yymain .= qq~
 <form action="$scripturl?action=sendtopic2" method="post" name="sendtopic" onsubmit="return CheckSendTopicFields();">
 <table width="70%" border="0" align="center" cellspacing="0" cellpadding="3">
 	<tr>
@@ -63,9 +73,9 @@ sub SendTopic {
 	</tr>
 ~;
 
-	if ($regcheck) {
-		&validation_code;
-		$yymain .= qq~
+    if ($regcheck) {
+        &validation_code;
+        $yymain .= qq~
 	<tr>
 		<td class="windowbg" align="center" valign="top" colspan="2">
 			<hr width="100%" size="1" class="hr" />
@@ -78,8 +88,8 @@ sub SendTopic {
 		<td width="70%" class="windowbg" align="left"><input type="text" maxlength="30" name="verification" id="verification" size="50" /></td>
 	</tr>
 ~;
-	}
-	$yymain .= qq~
+    }
+    $yymain .= qq~
 	<tr>
 		<td class="windowbg" align="center" valign="top" colspan="2">
 			<hr width="100%" size="1" class="hr" />
@@ -118,68 +128,100 @@ sub SendTopic {
             document.sendtopic.r_email.focus();
         return false;
         }
-        ~ . ($regcheck ? qq~
+        ~ . (
+        $regcheck
+        ? qq~
         if (document.sendtopic.verification.value == '') {
             alert("$sendtopic_txt{'error_verification'}");
             document.sendtopic.verification.focus();
             return false;
-        }~ : '') . qq~
+        }~
+        : ''
+      )
+      . qq~
         return true;
     }
 //-->
 </script>~;
-	$yytitle = "$sendtopic_txt{'707'}&nbsp; &#171; $subject &#187; &nbsp;$sendtopic_txt{'708'}";
-	$yynavigation = qq~&rsaquo; $sendtopic_txt{'707'}~;
-	&template;
+    $yytitle =
+"$sendtopic_txt{'707'}&nbsp; &#171; $subject &#187; &nbsp;$sendtopic_txt{'708'}";
+    $yynavigation = qq~&rsaquo; $sendtopic_txt{'707'}~;
+    &template;
 }
 
 sub SendTopic2 {
-	$topic = $FORM{'topic'};
-	$board = $FORM{'board'};
-	&fatal_error("no_board_send") unless ($board ne '' && $board ne '_' && $board ne ' ');
-	&fatal_error("no_topic_send") unless ($topic ne '' && $topic ne '_' && $topic ne ' ');
+    $topic = $FORM{'topic'};
+    $board = $FORM{'board'};
+    &fatal_error("no_board_send")
+      unless ( $board ne '' && $board ne '_' && $board ne ' ' );
+    &fatal_error("no_topic_send")
+      unless ( $topic ne '' && $topic ne '_' && $topic ne ' ' );
 
-	$yname  = $FORM{'y_name'};
-	$rname  = $FORM{'r_name'};
-	$yemail = $FORM{'y_email'};
-	$remail = $FORM{'r_email'};
-	$yname =~ s/\A\s+//;
-	$yname =~ s/\s+\Z//;
-	$yemail =~ s/\A\s+//;
-	$yemail =~ s/\s+\Z//;
-	$rname =~ s/\A\s+//;
-	$rname =~ s/\s+\Z//;
-	$remail =~ s/\A\s+//;
-	$remail =~ s/\s+\Z//;
+    $yname  = $FORM{'y_name'};
+    $rname  = $FORM{'r_name'};
+    $yemail = $FORM{'y_email'};
+    $remail = $FORM{'r_email'};
+    $yname  =~ s/\A\s+//;
+    $yname  =~ s/\s+\Z//;
+    $yemail =~ s/\A\s+//;
+    $yemail =~ s/\s+\Z//;
+    $rname  =~ s/\A\s+//;
+    $rname  =~ s/\s+\Z//;
+    $remail =~ s/\A\s+//;
+    $remail =~ s/\s+\Z//;
 
-	&fatal_error("no_name","$sendtopic_txt{'335'}") unless ($yname ne '' && $yname ne '_' && $yname ne ' ');
-	&fatal_error("sendname_too_long","$sendtopic_txt{'335'}") if (length($yname) > 25);
-	&fatal_error("no_email","$sendtopic_txt{'336'}") if ($yemail eq '');
-	&fatal_error("invalid_character","$sendtopic_txt{'336'} $sendtopic_txt{'241'}") if ($yemail !~ /[\w\-\.\+]+\@[\w\-\.\+]+\.(\w{2,4}$)/);
-	&fatal_error("invalid_email","$sendtopic_txt{'336'}") if (($yemail =~ /(@.*@)|(\.\.)|(@\.)|(\.@)|(^\.)|(\.$)/) || ($yemail !~ /^.+@\[?(\w|[-.])+\.[a-zA-Z]{2,4}|[0-9]{1,4}\]?$/));
-	&fatal_error("no_name","$sendtopic_txt{'717'}") unless ($rname ne '' && yname ne '_' && $rname ne ' ');
-	&fatal_error("sendname_too_long","$sendtopic_txt{'717'}") if (length($rname) > 25);
-	&fatal_error("no_email","$sendtopic_txt{'718'}") if ($remail eq '');
-	&fatal_error("invalid_character","$sendtopic_txt{'718'} $sendtopic_txt{'241'}") if ($remail !~ /[\w\-\.\+]+\@[\w\-\.\+]+\.(\w{2,4}$)/);
-	&fatal_error("invalid_email","$sendtopic_txt{'718'}")                                            if (($remail =~ /(@.*@)|(\.\.)|(@\.)|(\.@)|(^\.)|(\.$)/) || ($remail !~ /^.+@\[?(\w|[-.])+\.[a-zA-Z]{2,4}|[0-9]{1,4}\]?$/));
-	if ($regcheck) {
-		&validation_check($FORM{'verification'});
-	}
+    &fatal_error( "no_name", "$sendtopic_txt{'335'}" )
+      unless ( $yname ne '' && $yname ne '_' && $yname ne ' ' );
+    &fatal_error( "sendname_too_long", "$sendtopic_txt{'335'}" )
+      if ( length($yname) > 25 );
+    &fatal_error( "no_email", "$sendtopic_txt{'336'}" ) if ( $yemail eq '' );
+    &fatal_error( "invalid_character",
+        "$sendtopic_txt{'336'} $sendtopic_txt{'241'}" )
+      if ( $yemail !~ /[\w\-\.\+]+\@[\w\-\.\+]+\.(\w{2,4}$)/ );
+    &fatal_error( "invalid_email", "$sendtopic_txt{'336'}" )
+      if ( ( $yemail =~ /(@.*@)|(\.\.)|(@\.)|(\.@)|(^\.)|(\.$)/ )
+        || ( $yemail !~ /^.+@\[?(\w|[-.])+\.[a-zA-Z]{2,4}|[0-9]{1,4}\]?$/ ) );
+    &fatal_error( "no_name", "$sendtopic_txt{'717'}" )
+      unless ( $rname ne '' && yname ne '_' && $rname ne ' ' );
+    &fatal_error( "sendname_too_long", "$sendtopic_txt{'717'}" )
+      if ( length($rname) > 25 );
+    &fatal_error( "no_email", "$sendtopic_txt{'718'}" ) if ( $remail eq '' );
+    &fatal_error( "invalid_character",
+        "$sendtopic_txt{'718'} $sendtopic_txt{'241'}" )
+      if ( $remail !~ /[\w\-\.\+]+\@[\w\-\.\+]+\.(\w{2,4}$)/ );
+    &fatal_error( "invalid_email", "$sendtopic_txt{'718'}" )
+      if ( ( $remail =~ /(@.*@)|(\.\.)|(@\.)|(\.@)|(^\.)|(\.$)/ )
+        || ( $remail !~ /^.+@\[?(\w|[-.])+\.[a-zA-Z]{2,4}|[0-9]{1,4}\]?$/ ) );
 
-	unless (ref($thread_arrayref{$topic})) {
-		fopen(FILE, "$datadir/$topic.txt") || &fatal_error("cannot_open","$datadir/$topic.txt", 1);
-		@{$thread_arrayref{$topic}} = <FILE>;
-		fclose(FILE);
-	}
-	$subject = (split(/\|/, ${$thread_arrayref{$topic}}[0], 2))[0];
-	&FromHTML($subject);
-	require "$sourcedir/Mailer.pl";
-	&LoadLanguage('Email');
-		my $message = &template_email($sendtopicemail, {'toname' => $rname, 'subject' => $subject, 'displayname' => $yname, 'num' => $topic});
-	&sendmail($remail, "$sendtopic_txt{'118'}: $subject ($sendtopic_txt{'318'} $yname)", $message, $yemail);
+    if ($regcheck) {
+        &validation_check( $FORM{'verification'} );
+    }
 
-	$yySetLocation = qq~$scripturl?num=$topic~;
-	&redirectexit;
+    unless ( ref( $thread_arrayref{$topic} ) ) {
+        fopen( FILE, "$datadir/$topic.txt" )
+          || &fatal_error( "cannot_open", "$datadir/$topic.txt", 1 );
+        @{ $thread_arrayref{$topic} } = <FILE>;
+        fclose(FILE);
+    }
+    $subject = ( split( /\|/, ${ $thread_arrayref{$topic} }[0], 2 ) )[0];
+    &FromHTML($subject);
+    require "$sourcedir/Mailer.pl";
+    &LoadLanguage('Email');
+    my $message = &template_email(
+        $sendtopicemail,
+        {
+            'toname'      => $rname,
+            'subject'     => $subject,
+            'displayname' => $yname,
+            'num'         => $topic
+        }
+    );
+    &sendmail( $remail,
+        "$sendtopic_txt{'118'}: $subject ($sendtopic_txt{'318'} $yname)",
+        $message, $yemail );
+
+    $yySetLocation = qq~$scripturl?num=$topic~;
+    &redirectexit;
 }
 
 1;

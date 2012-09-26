@@ -1,5 +1,6 @@
 ###############################################################################
 # DoSmilies.pl                                                                #
+# $Date: 9/20/2012 $                                                          #
 ###############################################################################
 # YaBB: Yet another Bulletin Board                                            #
 # Open-Source Community Software for Webmasters                               #
@@ -11,9 +12,15 @@
 # Software by:  The YaBB Development Team                                     #
 #               with assistance from the YaBB community.                      #
 ###############################################################################
+# use strict;
+# use warnings;
+no warnings qw(uninitialized once redefine);
+use CGI::Carp qw(fatalsToBrowser);
+use English '-no_match_vars';
+our $VERSION = 1.0;
 
 $dosmiliesplver = 'YaBB 2.6 $Revision: 1.0 $';
-if ($action eq 'detailedversion') { return 1; }
+if ( $action eq 'detailedversion' ) { return 1; }
 
 &LoadLanguage('Main');
 
@@ -66,7 +73,8 @@ qq~<td><img src="$smiliesurl/$line" id="$name" onclick="javascript:MoreSmilies($
     }
     $more_smilie_array .= q~''~;
 
-      $output = qq~<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+    $output =
+qq~<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
 <head>
 <title>$smiltxt{'1'}</title>
@@ -107,80 +115,100 @@ function MoreSmilies(i) {
 <body style="background: #$popback; min-width:400px;">
 <p style="color:#$poptext; text-align:center">$smiltxt{'21'}</p><table><tr>~;
 
-      if ($showadded eq 3 || ($showadded eq 2 && $detachblock eq 1)) {
-            $output .= qq~ $moresmilieslist ~;
-      }
+    if ( $showadded eq 3 || ( $showadded eq 2 && $detachblock eq 1 ) ) {
+        $output .= qq~ $moresmilieslist ~;
+    }
 
-      $output .= qq~
+    $output .= qq~
       $evenmoresmilies
 </tr></table>
 </body>
 </html>~;
 
-      &print_HTML_output_and_finish;
+    &print_HTML_output_and_finish;
 }
 
 sub SmilieIndex {
-      &print_output_header;
+    &print_output_header;
 
-      $i = 0;
-      $offset = 0;
-      $smilieslist = "";
-      $smilie_code_array = "";
-      if ($showadded eq 3 || ($showadded eq 2 && $detachblock eq 1)) {
-            while ($SmilieURL[$i]) {
-                  if ($i % 4 == 0 && $i != 0) {
+    $i                 = 0;
+    $offset            = 0;
+    $smilieslist       = "";
+    $smilie_code_array = "";
+    if ( $showadded eq 3 || ( $showadded eq 2 && $detachblock eq 1 ) ) {
+        while ( $SmilieURL[$i] ) {
+            if ( $i % 4 == 0 && $i != 0 ) {
+                $smilieslist .= qq~      </tr>\n      <tr>\n~;
+                $offset++;
+            }
+            if ( ( $i + $offset ) % 2 == 0 ) {
+                $smiliescolor = qq~class="windowbg2"~;
+            }
+            else { $smiliescolor = qq~class="windowbg"~; }
+            if ( $SmilieURL[$i] =~ /\//i ) { $tmpurl = $SmilieURL[$i]; }
+            else { $tmpurl = qq~$defaultimagesdir/$SmilieURL[$i]~; }
+            $smilieslist .=
+qq~          <td align="center" valign="middle" height="60" $smiliescolor><img src="$tmpurl" border="0" alt="" onclick='javascript:MoreSmilies($i)' style='cursor:hand' /><br /><font size="1" color="#$poptext">$SmilieDescription[$i]</font></td>\n~;
+            $smilie_url_array .= qq~"$tmpurl", ~;
+            $tmpcode = $SmilieCode[$i];
+            $tmpcode =~ s/\&quot;/"+'"'+"/g;
+            &FromHTML($tmpcode);
+            $tmpcode =~ s/&#36;/\$/g;
+            $tmpcode =~ s/&#64;/\@/g;
+            $more_smilie_array .= qq~" $tmpcode", ~;
+            $i++;
+        }
+    }
+    if ( $showsmdir eq 3 || ( $showsmdir eq 2 && $detachblock eq 1 ) ) {
+        opendir( DIR, "$smiliesdir" );
+        @contents = readdir(DIR);
+        closedir(DIR);
+        foreach $line ( sort { uc($a) cmp uc($b) } @contents ) {
+            ( $name, $extension ) = split( /\./, $line );
+            if (   $extension =~ /gif/i
+                || $extension =~ /jpg/i
+                || $extension =~ /jpeg/i
+                || $extension =~ /png/i )
+            {
+                if ( $line !~ /banner/i ) {
+                    if ( $i % 4 == 0 && $i != 0 ) {
                         $smilieslist .= qq~      </tr>\n      <tr>\n~;
                         $offset++;
-                  }
-                  if (($i + $offset) % 2 == 0) { $smiliescolor = qq~class="windowbg2"~; }
-                  else { $smiliescolor = qq~class="windowbg"~; }
-                  if ($SmilieURL[$i] =~ /\//i) { $tmpurl = $SmilieURL[$i]; }
-                  else { $tmpurl = qq~$defaultimagesdir/$SmilieURL[$i]~; }
-                  $smilieslist .= qq~          <td align="center" valign="middle" height="60" $smiliescolor><img src="$tmpurl" border="0" alt="" onclick='javascript:MoreSmilies($i)' style='cursor:hand' /><br /><font size="1" color="#$poptext">$SmilieDescription[$i]</font></td>\n~;
-                  $smilie_url_array .= qq~"$tmpurl", ~;
-                  $tmpcode = $SmilieCode[$i];
-                  $tmpcode =~ s/\&quot;/"+'"'+"/g;
-                  &FromHTML($tmpcode);
-                  $tmpcode =~ s/&#36;/\$/g;
-                  $tmpcode =~ s/&#64;/\@/g;
-                  $more_smilie_array .= qq~" $tmpcode", ~;
-                  $i++;
+                    }
+                    if ( ( $i + $offset ) % 2 == 0 ) {
+                        $smiliescolor = qq~class="windowbg2"~;
+                    }
+                    else { $smiliescolor = qq~class="windowbg"~; }
+                    $smilieslist .=
+qq~          <td align="center" valign="middle" height="60" $smiliescolor><img src="$smiliesurl/$line" border="0" alt="" onclick="javascript:MoreSmilies($i)" style="cursor:hand" /><br /><font size="1" color="#$poptext">$line</font></td>\n~;
+                    $more_smilie_array .= qq~" [smiley=$line]", ~;
+                    $i++;
+                }
             }
-      }
-      if ($showsmdir eq 3 || ($showsmdir eq 2 && $detachblock eq 1)) {
-            opendir(DIR, "$smiliesdir");
-            @contents = readdir(DIR);
-            closedir(DIR);
-            foreach $line (sort { uc($a) cmp uc($b) } @contents) {
-                  ($name, $extension) = split(/\./, $line);
-                  if ($extension =~ /gif/i || $extension =~ /jpg/i || $extension =~ /jpeg/i || $extension =~ /png/i) {
-                        if ($line !~ /banner/i) {
-                              if ($i % 4 == 0 && $i != 0) {
-                                    $smilieslist .= qq~      </tr>\n      <tr>\n~;
-                                    $offset++;
-                              }
-                              if (($i + $offset) % 2 == 0) { $smiliescolor = qq~class="windowbg2"~; }
-                              else { $smiliescolor = qq~class="windowbg"~; }
-                              $smilieslist .= qq~          <td align="center" valign="middle" height="60" $smiliescolor><img src="$smiliesurl/$line" border="0" alt="" onclick="javascript:MoreSmilies($i)" style="cursor:hand" /><br /><font size="1" color="#$poptext">$line</font></td>\n~;
-                              $more_smilie_array .= qq~" [smiley=$line]", ~;
-                              $i++;
-                        }
-                  }
-            }
-      }
-      while ($i % 4 != 0) {
-            if (($i + $offset) % 2 == 0) { $smiliescolor = qq~class="windowbg2"~; }
-            else { $smiliescolor = qq~class="windowbg"~; }
-            $smilieslist .= qq~          <td align="center" valign="middle" height="60" $smiliescolor>&nbsp;</td>\n~;
-            $i++;
-      }
-      $smilie_code_array .= qq~""~;
-      $more_smilie_array .= qq~""~;
-      if (-e "$smiliesdir/banner.gif") { $smiliesheader = qq~<tr><td colspan="4" bgcolor="#$popback" align="center"><img src="$smiliesurl/banner.gif" alt="" /></td></tr>~; }
-      else { $smiliesheader = qq~<tr><td colspan="4" align="center"><b><font size="2">$smiltxt{'21'}</font></b></td></tr>~; }
+        }
+    }
+    while ( $i % 4 != 0 ) {
+        if ( ( $i + $offset ) % 2 == 0 ) {
+            $smiliescolor = qq~class="windowbg2"~;
+        }
+        else { $smiliescolor = qq~class="windowbg"~; }
+        $smilieslist .=
+qq~          <td align="center" valign="middle" height="60" $smiliescolor>&nbsp;</td>\n~;
+        $i++;
+    }
+    $smilie_code_array .= qq~""~;
+    $more_smilie_array .= qq~""~;
+    if ( -e "$smiliesdir/banner.gif" ) {
+        $smiliesheader =
+qq~<tr><td colspan="4" bgcolor="#$popback" align="center"><img src="$smiliesurl/banner.gif" alt="" /></td></tr>~;
+    }
+    else {
+        $smiliesheader =
+qq~<tr><td colspan="4" align="center"><b><font size="2">$smiltxt{'21'}</font></b></td></tr>~;
+    }
 
-      $output = qq~<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+    $output =
+qq~<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
 <head>
 <title>$smiltxt{'1'}</title>
@@ -224,7 +252,7 @@ $smilieslist
 </body>
 </html>~;
 
-      &print_HTML_output_and_finish;
+    &print_HTML_output_and_finish;
 }
 
 1;

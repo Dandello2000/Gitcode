@@ -1,5 +1,6 @@
 ###############################################################################
 # ContextHelp.pl                                                              #
+# $Date: 9/20/2012 $                                                          #
 ###############################################################################
 # YaBB: Yet another Bulletin Board                                            #
 # Open-Source Community Software for Webmasters                               #
@@ -11,23 +12,28 @@
 # Software by:  The YaBB Development Team                                     #
 #               with assistance from the YaBB community.                      #
 ###############################################################################
-# Many thanks to Carsten Dalgaard (http://www.carsten-dalgaard.dk/)           # 
+# Many thanks to Carsten Dalgaard (http://www.carsten-dalgaard.dk/)           #
 # for his contibution to the YaBB community                                   #
 ###############################################################################
+# use strict;
+# use warnings;
+no warnings qw(uninitialized once redefine);
+use CGI::Carp qw(fatalsToBrowser);
+use English '-no_match_vars';
+our $VERSION = 1.0;
 
 $contexthelpplver = 'YaBB 2.6 $Revision: 1.0 $';
-if ($action eq 'detailedversion') { return 1; }
-
+if ( $action eq 'detailedversion' ) { return 1; }
 
 sub ContextScript {
-&LoadLanguage('ContextHelp');
+    &LoadLanguage('ContextHelp');
 
-my $contextmain;
-if($_[0] eq "post") { $contextmain = $contextpost; }
+    my $contextmain;
+    if ( $_[0] eq "post" ) { $contextmain = $contextpost; }
 
-undef %contextxt;
+    undef %contextxt;
 
-$ctmain .= qq~
+    $ctmain .= qq~
       <script language="JavaScript1.2" type="text/javascript">
       <!--
       function Hash()   {
