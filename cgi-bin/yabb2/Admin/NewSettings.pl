@@ -1,25 +1,23 @@
 ###############################################################################
 # NewSettings.pl                                                              #
-# $Date: 9/20/2012 $                                                          #
+# $Date: 9/07/2012 $                                                          #
 ###############################################################################
 # YaBB: Yet another Bulletin Board                                            #
 # Open-Source Community Software for Webmasters                               #
 # Version:        YaBB 2.6                                                    #
-# Packaged:       January 1, 2013                                             #
+# Packaged:       September 30, 2012                                          #
 # Distributed by: http://www.yabbforum.com                                    #
 # =========================================================================== #
 # Copyright (c) 2000-2012 YaBB (www.yabbforum.com) - All Rights Reserved.     #
 # Software by:  The YaBB Development Team                                     #
 #               with assistance from the YaBB community.                      #
 ###############################################################################
-# use strict;
-# use warnings;
+#use warnings;
 no warnings qw(uninitialized once redefine);
 use CGI::Carp qw(fatalsToBrowser);
-use English '-no_match_vars';
-our $VERSION = 1.0;
+our $VERSION = 1.2;
 
-$newsettingsplver = 'YaBB 2.6 $Revision: 1.0 $';
+$newsettingsplver = 'YaBB 2.6 $Revision: 1.2 $';
 if ( $action eq 'detailedversion' ) { return 1; }
 
 # Figure out what tabset to use, depending on the page= parameter.
@@ -60,19 +58,19 @@ sub settings {
       );
 
     my @requireorder;    # an array for the correct order of the requirements
-    my %requirements;    # an hash that says "Y is required by X"
+    my %requirements;    # a hash that says "Y is required by X"
 
     $yymain .= qq~
    <a name="top"></a>
    <div class="bordercolor" style="padding: 0px; width: 99%; margin-left: 0px; margin-right: auto;">
-   <table width="100%" cellspacing="1" cellpadding="4">
-     <tr valign="middle">
-       <td align="left" class="titlebg">
+   <table>
+     <tr>
+       <td class="titlebg">
          <b>$yytitle</b>
        </td>
      </tr>
-     <tr valign="middle">
-       <td align="left" class="windowbg2"><br />
+     <tr>
+       <td class="windowbg2"><br />
         $admin_txt{'347'}
        </td>
      </tr>
@@ -96,10 +94,10 @@ qq~    <li id="button_$tab->{'id'}" onclick="changeToTab('$tab->{'id'}'); return
     foreach my $tab (@settings) {
         $yymain .= qq~
   <div class="bordercolor" style="padding: 0px; width: 99%; margin-left: 0px; margin-right: auto;">
-    <table width="100%" cellspacing="1" cellpadding="4" class="section" id="tab_$tab->{'id'}">
+    <table class="section" id="tab_$tab->{'id'}">
      <tr>
-       <td style="text-align: left;" class="titlebg" colspan="2">
-         <a name="tab_$tab->{'id'}"></a><img src="$imagesdir/preferences.gif" alt="" border="0" /> <b>$tab->{'name'}</b>
+       <td class="titlebg" colspan="2">
+         <a name="tab_$tab->{'id'}"></a><img src="$imagesdir/preferences.gif" alt="" /> <b>$tab->{'name'}</b>
          <span style="float: right;" class="js_remove_me"><a href="#top"><b>$settings_txt{'top'}</b></a></span>
        </td>
      </tr>~;
@@ -108,31 +106,31 @@ qq~    <li id="button_$tab->{'id'}" onclick="changeToTab('$tab->{'id'}'); return
             if ( $item->{'header'} ) {
                 $yymain .= qq~
      <tr>
-       <td style="text-align: left;" class="catbg" colspan="2">
+       <td class="catbg" colspan="2">
          <span class="small">$item->{'header'}</span>
        </td>
      </tr>~;
             }
             elsif ( $item->{'two_rows'} && $item->{'input_html'} ) {
                 $yymain .= qq~
-     <tr style="text-align: left;">
-       <td style="width: 50%;" class="windowbg2" colspan="2">
+     <tr>
+       <td class="windowbg2" style="width:50%;" colspan="2">
          $item->{'description'}
        </td>
      </tr>
-     <tr style="text-align: left;">
-       <td style="width: 50%;" class="windowbg2" colspan="2">
+     <tr>
+       <td class="windowbg2" style="width:50%;" colspan="2">
          $item->{'input_html'}
        </td>
      </tr>~;
             }
             elsif ( $item->{'input_html'} ) {
                 $yymain .= qq~
-     <tr style="text-align: left;">
-       <td style="width: 50%;" class="windowbg2" valign="top">
+     <tr>
+       <td class="windowbg2" style="width: 50%; vertical-align:top">
          $item->{'description'}
        </td>
-       <td style="width: 50%;" class="windowbg2" valign="top">
+       <td class="windowbg2" style="width: 50%; vertical-align:top">
          $item->{'input_html'}
        </td>
      </tr>~;
@@ -221,14 +219,14 @@ qq~$C\document.getElementsByName("$ritem")[0].value != '$1'$AndOr ~;
     $default_tab = $INFO{'tab'} || $settings[0]->{'id'};
     $yymain .= qq~
   <div class="bordercolor" style="padding: 0px; width: 99%; margin-top: 1em; margin-left: 0px; margin-right: auto;">
-   <table width="100%" cellspacing="1" cellpadding="4">
-     <tr valign="middle">
-       <td align="left" class="titlebg" colspan="2">
-         <img src="$imagesdir/preferences.gif" alt="" border="0" /> <b>$admin_txt{'10'}</b>
+   <table>
+     <tr>
+       <td class="titlebg" colspan="2">
+         <img src="$imagesdir/preferences.gif" alt="" /> <b>$admin_txt{'10'}</b>
        </td>
      </tr>
-     <tr align="center" valign="middle">
-       <td align="center" class="catbg" colspan="2">
+     <tr>
+       <td class="catbg" style="text-align:center" colspan="2">
          <input class="button" type="submit" value="$admin_txt{'10'}" />
        </td>
      </tr>
@@ -419,142 +417,7 @@ sub SaveSettingsTo {
 
     my $setfile;
     if ( $file eq 'Settings.pl' ) {
-        if ( $settings_file_version ne $YaBBversion ) {    # START upgrade codes
-                # The following is for upgrades from YaBB versions < 2.3 START
-            if ( $enable_notifications eq '' ) {
-                $enable_notifications = $enable_notification ? 3 : 0;
-            }
-            $fix_avatar_img_size ||= 0;
-            $fix_post_img_size   ||= 0;
-            $fix_signat_img_size ||= 0;
-            $fix_attach_img_size ||= 0;
 
-            # The following is for upgrades from YaBB versions < 2.3 END
-
-            # The following is for upgrades from YaBB versions < 2.4 START
-            if ( -e "$vardir/membergroups.txt" ) {
-                require "$vardir/membergroups.txt";
-            }
-            if ( !@nopostorder && -e "$vardir/nopostorder.txt" ) {
-                fopen( NPORDER, "$vardir/nopostorder.txt" );
-                @nopostorder = <NPORDER>;
-                fclose(NPORDER);
-                chomp(@nopostorder);
-            }
-
-            if ( -e "$vardir/advsettings.txt" ) {
-                require "$vardir/advsettings.txt";
-            }
-            if ( -e "$vardir/secsettings.txt" ) {
-                require "$vardir/secsettings.txt";
-            }
-
-            if ( -e "$vardir/Smilies.txt" ) {
-                require "$vardir/Smilies.txt";
-                $popback =~ s/[^a-f0-9]//ig;
-                $poptext =~ s/[^a-f0-9]//ig;
-            }
-
-            if ( -e "$vardir/template.cfg" ) { require "$vardir/template.cfg"; }
-            elsif ( !%templateset ) {  # only for upgrade from very old versions
-                opendir( TMPLDIR, "$templatesdir" );
-                my @configs = readdir(TMPLDIR);
-                closedir(TMPLDIR);
-                foreach (@configs) {
-                    if ( -e "$templatesdir/$_/$_.cfg" ) {
-                        require "$admindir/ManageTemplates.pl";
-                        &UpdateTemplates( $_, "new" );
-                    }
-                }
-            }
-
-            if ( -e "$vardir/Guardian.banned" ) {
-                require "$vardir/Guardian.banned";
-            }
-            if ( -e "$vardir/Guardian.settings" ) {
-                require "$vardir/Guardian.settings";
-            }
-
-            if ( -e "$vardir/ban.txt" ) {
-                fopen( BAN, "$vardir/ban.txt" );
-                foreach (<BAN>) {
-                    my ( $type, $bannedlist ) = split( /\|/, $_, 2 );
-                    chomp($bannedlist);
-                    $ip_banlist    = $bannedlist if $type =~ /I/i;
-                    $email_banlist = $bannedlist if $type =~ /E/i;
-                    $user_banlist  = $bannedlist if $type =~ /U/i;
-                }
-                fclose(BAN);
-            }
-
-            if ( -e "$vardir/HelpSettings.txt" ) {
-                require "$vardir/HelpSettings.txt";
-            }
-            if ( -e "$vardir/BackupSettings.cgi" ) {
-                require "$vardir/BackupSettings.cgi";
-                @backup_paths = @paths;
-            }
-
-            if ( -e "$vardir/extended_profiles_order.txt" ) {
-                fopen( EXT_FILE, "$vardir/extended_profiles_order.txt" );
-                @ext_prof_order = <EXT_FILE>;
-                fclose(EXT_FILE);
-                chomp(@ext_prof_order);
-            }
-            if ( -e "$vardir/extended_profiles_fields.txt" ) {
-                fopen( EXT_FILE, "$vardir/extended_profiles_fields.txt" );
-                @ext_prof_fields = <EXT_FILE>;
-                fclose(EXT_FILE);
-                chomp(@ext_prof_fields);
-            }
-
-            if ( -e "$vardir/palette.def" ) {
-                fopen( DEFPAL, "$vardir/palette.def" );
-                @pallist = <DEFPAL>;
-                fclose(DEFPAL);
-                chomp(@pallist);
-            }
-
-            if ( !@AdvancedTabs ) {
-                if ( -e "$vardir/taborder.txt" ) {
-                    fopen( TABFILE, "$vardir/taborder.txt" );
-                    @AdvancedTabs = <TABFILE>;
-                    fclose(TABFILE);
-                    chomp(@AdvancedTabs);
-                }
-                else {
-                    @AdvancedTabs =
-                      qw (home help search ml admin revalidatesession login register guestpm mycenter logout);
-                }
-
-                if ( fopen( EXTTAB, "$vardir/tabs_ext.def" ) ) {
-                    my %exttabs = map /(.*)\t(.*)/, <EXTTAB>;
-                    fclose(EXTTAB);
-                    for ( my $i = 0 ; $i < @AdvancedTabs ; $i++ ) {
-                        if ( $exttabs{ $AdvancedTabs[$i] } ) {
-                            $exttabs{ $AdvancedTabs[$i] } =~ s/"//g;
-                            $AdvancedTabs[$i] .= "|$exttabs{$AdvancedTabs[$i]}";
-                        }
-                    }
-                    chomp(@AdvancedTabs);
-                }
-            }
-
-            # The following is for upgrades from YaBB versions < 2.4 END
-
-            # The following is for upgrades from YaBB versions < 2.3 START
-            if ( -e "$vardir/upgrade_secsettings.txt" ) {
-                require "$vardir/upgrade_secsettings.txt";
-            }
-            if ( -e "$vardir/upgrade_advsettings.txt" ) {
-                require "$vardir/upgrade_advsettings.txt";
-            }
-            if ( -e "$vardir/upgrade_Settings.pl" ) {
-                require "$vardir/upgrade_Settings.pl";
-            }
-
-            # The following is for upgrades from YaBB versions < 2.3 END
-        }    # END upgrade codes
 
         # Since these are normally in a hash, fix that here
         $fadertext       ||= $color{'fadertext'};
@@ -618,7 +481,7 @@ sub SaveSettingsTo {
 # YaBB: Yet another Bulletin Board                                            #
 # Open-Source Community Software for Webmasters                               #
 # Version:        YaBB 2.6                                                    #
-# Packaged:       January 1, 2013                                             #
+# Packaged:       September 30, 2012                                          #
 # Distributed by: http://www.yabbforum.com                                    #
 # =========================================================================== #
 # Copyright (c) 2000-2012  YaBB (www.yabbforum.com) - All Rights Reserved.    #
@@ -1023,10 +886,8 @@ $ext_prof_fields
 \$show_online_ip_gmod = $show_online_ip_gmod;         # Set to 1 to show online IP's to global moderators.
 \$masterkey = "\Q$masterkey\E";                       # Seed for encryption of captcha's
 
-
-
 ###############################################################################
-# Guardian Settings (old Guardian.banned and Guardian.settings)               #
+# Guardian Settings                                                           #
 ###############################################################################
 
 \$banned_harvesters = qq~$banned_harvesters~;
